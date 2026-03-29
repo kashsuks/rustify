@@ -6,7 +6,7 @@ use player::Player;
 
 pub fn main() -> iced::Result {
     iced::application("Rustify", App::update, App::view)
-        .theme(|_| Theme::TokyoNight)
+        .theme(|_| Theme::Nord)
         .run_with(|| (App::new(), Task::none()))
 }
 
