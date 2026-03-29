@@ -198,6 +198,24 @@ impl App {
         button(row_content)
             .on_press(Message::SelectTrack(idx))
             .width(Length::Fill)
+            .style(move |_theme, status| {
+                let bg = match (is_active, matches!(status, button::Status::Hovered)) {
+                    (_, true) => Color::from_rgba(1.0, 1.0, 1.0, 0.06), // Hovered
+                    (true, _) => Color::from_rgba(1.0, 1.0, 1.0, 0.03), // playing
+                    _ => Color::TRANSPARENT,
+                };
+
+                button::Style {
+                    background: Some(iced::Background::Color(bg)),
+                    text_color: if is_active {
+                        Color::WHITE
+                    } else {
+                        Color::from_rgba(1.0, 1.0, 1.0, 0.85)
+                    },
+                    border: iced::Border::default(),
+                    shadow: iced::Shadow::default(),
+                }
+            })
             .into()
     }
 
