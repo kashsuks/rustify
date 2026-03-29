@@ -1,5 +1,8 @@
 use iced::{Element, Task, Theme, Length, Color, Padding};
 use iced::widget::{button, column, container, scrollable, horizontal_rule, row, text, Space};
+use iced::widget::image as iced_image;
+use lofty::prelude::*;
+use lofty::probe::Probe;
 
 mod player;
 use player::Player;
@@ -34,6 +37,7 @@ struct TrackMeta {
     artist: String,
     album: String,
     duration: String,
+    artwork: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone)]
@@ -82,7 +86,7 @@ impl App {
             Message::Next => {
                 if self.queue.is_empty() { return Task::none(); }
                 let next = self.current.map(|i| (i + 1) % self.queue.len()).unwrap_or(0);
-                self.current = Some(next);                
+                self.current = Some(next);
                 self.player.load(&self.queue[next].path);
                 self.player.play();
                 self.playing = true;
@@ -200,11 +204,10 @@ impl App {
             .width(Length::Fill)
             .style(move |_theme, status| {
                 let bg = match (is_active, matches!(status, button::Status::Hovered)) {
-                    (_, true) => Color::from_rgba(1.0, 1.0, 1.0, 0.06), // Hovered
-                    (true, _) => Color::from_rgba(1.0, 1.0, 1.0, 0.03), // playing
-                    _ => Color::TRANSPARENT,
+                    (_, true) => Color::from_rgba(1.0, 1.0, 1.0, 0.06),
+                    (true, _) => Color::from_rgba(1.0, 1.0, 1.0, 0.03),
+                    _         => Color::TRANSPARENT,
                 };
-
                 button::Style {
                     background: Some(iced::Background::Color(bg)),
                     text_color: if is_active {
@@ -216,47 +219,6 @@ impl App {
                     shadow: iced::Shadow::default(),
                 }
             })
-            .into()
-    }
-
-    fn playlist_view(&self) -> Element<Message> {
-        let header = row![
-            text("Library").size(20),
-            button("Open").on_press(Message::OpenFolder),
-        ]
-        .spacing(12)
-        .padding(16);
-
-        let track_list: Element<Message> = if self.queue.is_empty() {
-            container(
-                text("Open a folder to load music").size(14)
-            )
-            .padding(20)
-            .into()
-        } else {
-            let items = column(
-                self.queue.iter().enumerate().map(|(i, path)| {
-                    self.track_row(i, path)
-                })
-            )
-            .spacing(2)
-            .padding([0, 8]);
-
-            scrollable(items)
-                .height(Length::Fill)
-                .into()
-        };
-
-        let sidebar = column![
-            header,
-            horizontal_rule(1),
-            track_list,
-        ]
-        .width(320)
-        .height(Length::Fill);
-
-        container(sidebar)
-            .height(Length::Fill)
             .into()
     }
 
@@ -274,23 +236,34 @@ impl App {
         let album = current_track
             .map(|t| t.album.as_str())
             .unwrap_or("");
-        
-        // placeholder for now
-        let art_placeholder = container(
-            text("♪").size(64)
-        )
-        .width(260)
-        .height(260)
-        .center_x(Length::Fill)
-        .center_y(Length::Fill)
-        .style(|_theme| container::Style {
-            background: Some(iced::Background::Color(Color::from_rgb(0.15, 0.15, 0.2))),
-            border: iced::Border {
-                radius: 8.0.into(),
-                ..Default::default()
-            },
-            ..Default::default()
-        });
+
+        let art: Element<Message> = match current_track.and_then(|t| t.artwork.as_ref()) {
+            Some(bytes) => {
+                let handle = iced_image::Handle::from_bytes(bytes.clone());
+                iced_image::Image::new(handle)
+                    .width(260)
+                    .height(260)
+                    .into()
+            }
+            None => {
+                container(text("♪").size(64))
+                    .width(260)
+                    .height(260)
+                    .center_x(Length::Fill)
+                    .center_y(Length::Fill)
+                    .style(|_theme| container::Style {
+                        background: Some(iced::Background::Color(
+                            Color::from_rgb(0.15, 0.15, 0.2)
+                        )),
+                        border: iced::Border {
+                            radius: 8.0.into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    })
+                    .into()
+            }
+        };
 
         let info = column![
             text(title).size(20),
@@ -315,7 +288,7 @@ impl App {
         .padding(Padding { top: 20.0, right: 0.0, bottom: 0.0, left: 0.0 });
 
         let panel = column![
-            art_placeholder,
+            art,
             info,
             controls,
         ]
@@ -353,25 +326,37 @@ fn scan_audio(dir: &std::path::Path) -> Vec<TrackMeta> {
                 .map(|ext| extensions.contains(&ext.to_lowercase().as_str()))
                 .unwrap_or(false)
         })
-        .enumerate()
-        .map(|(_i, e)| {
+        .map(|e| {
             let path = e.path().to_path_buf();
-            let title = path.file_stem()
+
+            let mut title = path.file_stem()
                 .and_then(|s| s.to_str())
                 .unwrap_or("Unknown")
                 .to_string();
-            let ext = path.extension()
-                .and_then(|s| s.to_str())
-                .unwrap_or("")
-                .to_uppercase();
+            let mut artist = "Unknown Artist".to_string();
+            let mut album = "Unknown Album".to_string();
+            let mut duration = "--:--".to_string();
+            let mut artwork = None;
 
-            TrackMeta {
-                path,
-                title,
-                artist: "Unknown Artist".to_string(),
-                album: ext,   // placeholder until we add lofty tag reading
-                duration: "--:--".to_string(),
+            if let Ok(tagged_file) = Probe::open(&path).and_then(|p| p.read()) {
+                let tag = tagged_file
+                    .primary_tag()
+                    .or_else(|| tagged_file.first_tag());
+
+                if let Some(tag) = tag {
+                    if let Some(t)  = tag.title()  { title  = t.to_string(); }
+                    if let Some(a)  = tag.artist() { artist = a.to_string(); }
+                    if let Some(al) = tag.album()  { album  = al.to_string(); }
+
+                    artwork = tag.pictures().first()
+                        .map(|pic| pic.data().to_vec());
+                }
+
+                let secs = tagged_file.properties().duration().as_secs();
+                duration = format!("{}:{:02}", secs / 60, secs % 60);
             }
+
+            TrackMeta { path, title, artist, album, duration, artwork }
         })
         .collect()
 }
