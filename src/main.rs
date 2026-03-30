@@ -3,6 +3,7 @@ use iced::widget::{button, column, container, scrollable, horizontal_rule, row, 
 use iced::widget::image as iced_image;
 use lofty::prelude::*;
 use lofty::probe::Probe;
+use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
 
 mod player;
 use player::Player;
@@ -18,15 +19,28 @@ struct App {
     queue: Vec<TrackMeta>,
     current: Option<usize>,
     playing: bool,
+    discord: Option<DiscordIpcClient>,
 }
 
 impl App {
     fn new() -> Self {
+        dotenvy::dotenv().ok();
+        let client_id = std::env::var("DISCORD_CLIENT_ID")
+            .unwrap_or_default();
+
+        let discord = DiscordIpcClient::new(&client_id)
+            .ok()
+            .and_then(|mut client| {
+                client.connect().ok()?;
+                Some(client)
+            });
+
         Self {
             player: Player::new(),
             queue: vec![],
             current: None,
             playing: false,
+            discord,
         }
     }
 }
@@ -71,16 +85,19 @@ impl App {
                 self.player.load(&self.queue[idx].path);
                 self.player.play();
                 self.playing = true;
+                self.update_discord();
             }
 
             Message::Play => {
                 self.player.play();
                 self.playing = true;
+                self.update_discord();
             }
 
             Message::Pause => {
                 self.player.pause();
                 self.playing = false;
+                self.update_discord();
             }
 
             Message::Next => {
@@ -90,6 +107,7 @@ impl App {
                 self.player.load(&self.queue[next].path);
                 self.player.play();
                 self.playing = true;
+                self.update_discord();
             }
 
             Message::Previous => {
@@ -99,6 +117,7 @@ impl App {
                 self.player.load(&self.queue[prev].path);
                 self.player.play();
                 self.playing = true;
+                self.update_discord();
             }
         }
 
@@ -305,6 +324,37 @@ impl App {
                 ..Default::default()
             })
             .into()
+    }
+
+    fn update_discord(&mut self) {
+        let Some(client) = self.discord.as_mut() else { return };
+
+        if !self.playing {
+            let _ = client.clear_activity();
+            return;
+        }
+
+        let Some(track) = self.current.and_then(|i| self.queue.get(i)) else {
+            let _ = client.clear_activity();
+            return;
+        };
+
+        let details = track.title.clone();
+        let state = format!("{} - {}", track.artist, track.album);
+
+        let _ = client.set_activity(
+            activity::Activity::new()
+                .details(&details)
+                .state(&state)
+                .assets(
+                    activity::Assets::new()
+                        .large_image("music") // key from discord app art assets
+                        .large_text(&track.title)
+                )
+                .buttons(vec![
+                    activity::Button::new("🎵 Rustify", "https://github.com/kashsuks/Rustify")
+                ])
+        );
     }
 }
 
