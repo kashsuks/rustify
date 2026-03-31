@@ -8,8 +8,12 @@ use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
 mod player;
 use player::Player;
 
+mod lastfm;
+use lastfm::Track as LastfmTrack;
+
 pub fn main() -> iced::Result {
     iced::application("Rustify", App::update, App::view)
+        .subscription(App::subscription)
         .theme(|_| Theme::Nord)
         .run_with(|| (App::new(), Task::none()))
 }
@@ -20,13 +24,15 @@ struct App {
     current: Option<usize>,
     playing: bool,
     discord: Option<DiscordIpcClient>,
+    lastfm_track: Option<LastfmTrack>,
+    lastfm_api_key: String,
+    lastfm_username: String,
 }
 
 impl App {
     fn new() -> Self {
         dotenvy::dotenv().ok();
-        let client_id = std::env::var("DISCORD_CLIENT_ID")
-            .unwrap_or_default();
+        let client_id = std::env::var("DISCORD_CLIENT_ID").unwrap_or_default();
 
         let discord = DiscordIpcClient::new(&client_id)
             .ok()
@@ -35,12 +41,18 @@ impl App {
                 Some(client)
             });
 
+        let lastfm_api_key = std::env::var("LASTFM_API_KEY").unwrap_or_default();
+        let lastfm_username = std::env::var("LASTFM_USERNAME").unwrap_or_default();
+
         Self {
             player: Player::new(),
             queue: vec![],
             current: None,
             playing: false,
             discord,
+            lastfm_track: None,
+            lastfm_api_key,
+            lastfm_username,
         }
     }
 }
@@ -63,6 +75,8 @@ enum Message {
     Pause,
     Next,
     Previous,
+    LastfmTick,
+    LastfmUpdated(Option<LastfmTrack>),
 }
 
 impl App {
@@ -119,9 +133,28 @@ impl App {
                 self.playing = true;
                 self.update_discord();
             }
+
+            Message::LastfmTick => {
+                let api_key = self.lastfm_api_key.clone();
+                let username = self.lastfm_username.clone();
+                return Task::perform(
+                    async move { lastfm::get_now_playing(&api_key, &username).await },
+                    Message::LastfmUpdated,
+                );
+            }
+
+            Message::LastfmUpdated(track) => {
+                self.lastfm_track = track;
+                self.update_discord();
+            }
         }
 
         Task::none()
+    }
+
+    fn subscription(&self) -> iced::Subscription<Message> {
+        iced::time::every(std::time::Duration::from_secs(10))
+            .map(|_| Message::LastfmTick)
     }
 }
 
@@ -306,10 +339,24 @@ impl App {
         .spacing(12)
         .padding(Padding { top: 20.0, right: 0.0, bottom: 0.0, left: 0.0 });
 
+        let lastfm_status: Element<Message> = if let Some(track) = &self.lastfm_track {
+            column![
+                text("▸ Last.fm").size(11),
+                text(&track.name).size(13),
+                text(&track.artist.text).size(11),
+            ]
+            .spacing(2)
+            .padding(Padding { top: 12.0, right: 0.0, bottom: 0.0, left: 0.0 })
+            .into()
+        } else {
+            Space::with_height(0).into()
+        };
+
         let panel = column![
             art,
             info,
             controls,
+            lastfm_status,
         ]
         .padding(24)
         .width(300)
@@ -329,18 +376,25 @@ impl App {
     fn update_discord(&mut self) {
         let Some(client) = self.discord.as_mut() else { return };
 
-        if !self.playing {
-            let _ = client.clear_activity();
-            return;
-        }
-
-        let Some(track) = self.current.and_then(|i| self.queue.get(i)) else {
+        let (details, state) = if let Some(track) = &self.lastfm_track {
+            (
+                track.name.clone(),
+                format!("{} — {}", track.artist.text, track.album.text),
+            )
+        } else if self.playing {
+            if let Some(track) = self.current.and_then(|i| self.queue.get(i)) {
+                (
+                    track.title.clone(),
+                    format!("{} — {}", track.artist, track.album),
+                )
+            } else {
+                let _ = client.clear_activity();
+                return;
+            }
+        } else {
             let _ = client.clear_activity();
             return;
         };
-
-        let details = track.title.clone();
-        let state = format!("{} - {}", track.artist, track.album);
 
         let _ = client.set_activity(
             activity::Activity::new()
@@ -348,8 +402,8 @@ impl App {
                 .state(&state)
                 .assets(
                     activity::Assets::new()
-                        .large_image("music") // key from discord app art assets
-                        .large_text(&track.title)
+                        .large_image("music")
+                        .large_text(&details)
                 )
                 .buttons(vec![
                     activity::Button::new("🎵 Rustify", "https://github.com/kashsuks/Rustify")
