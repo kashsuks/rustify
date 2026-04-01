@@ -11,6 +11,9 @@ use player::Player;
 mod lastfm;
 use lastfm::Track as LastfmTrack;
 
+mod scrobbler;
+use scrobbler::Scrobbler;
+
 pub fn main() -> iced::Result {
     iced::application("Rustify", App::update, App::view)
         .subscription(App::subscription)
@@ -27,6 +30,11 @@ struct App {
     lastfm_track: Option<LastfmTrack>,
     lastfm_api_key: String,
     lastfm_username: String,
+    scrobbler: Scrobbler,
+    auth_token: Option<String>,
+    scrobble_timer: f32,
+    current_duration_secs: u64,
+    scrobbled: bool,
 }
 
 impl App {
@@ -43,6 +51,9 @@ impl App {
 
         let lastfm_api_key = std::env::var("LASTFM_API_KEY").unwrap_or_default();
         let lastfm_username = std::env::var("LASTFM_USERNAME").unwrap_or_default();
+        let api_key = std::env::var("LASTFM_API_KEY").unwrap_or_default();
+        let api_secret = std::env::var("LASTFM_API_SECRET").unwrap_or_default();
+        eprintln!("DEBUG: api_key len={}, api_secret len={}", api_key.len(), api_secret.len());
 
         Self {
             player: Player::new(),
@@ -53,6 +64,11 @@ impl App {
             lastfm_track: None,
             lastfm_api_key,
             lastfm_username,
+            scrobbler: Scrobbler::new(api_key, api_secret),
+            auth_token: None,
+            scrobble_timer: 0.0,
+            current_duration_secs: 0,
+            scrobbled: false,
         }
     }
 }
@@ -77,6 +93,11 @@ enum Message {
     Previous,
     LastfmTick,
     LastfmUpdated(Option<LastfmTrack>),
+    StartAuth,
+    AuthTokenReceived(Option<String>),
+    CompleteAuth,
+    AuthCompleted(Option<String>),  // carries the session key back
+    ScrobbleTick,
 }
 
 impl App {
@@ -99,6 +120,26 @@ impl App {
                 self.player.load(&self.queue[idx].path);
                 self.player.play();
                 self.playing = true;
+                self.scrobble_timer = 0.0;
+                self.scrobbled = false;
+                self.current_duration_secs = parse_duration(&self.queue[idx].duration);
+
+                // send now playing to last.fm immediately
+                let artist = self.queue[idx].artist.clone();
+                let title = self.queue[idx].title.clone();
+                let album = self.queue[idx].album.clone();
+                if let Some(sk) = self.scrobbler.session_key.clone() {
+                    let key = self.scrobbler.api_key.clone();
+                    let secret = self.scrobbler.api_secret.clone();
+                    return Task::perform(
+                        async move {
+                            let s = Scrobbler::new_with_session(key, secret, sk);
+                            s.update_now_playing(&artist, &title, &album).await;
+                            Message::Play  // dummy — we don't need a response
+                        },
+                        |m| m,
+                    );
+                }
                 self.update_discord();
             }
 
@@ -121,6 +162,9 @@ impl App {
                 self.player.load(&self.queue[next].path);
                 self.player.play();
                 self.playing = true;
+                self.scrobble_timer = 0.0;
+                self.scrobbled = false;
+                self.current_duration_secs = parse_duration(&self.queue[next].duration);
                 self.update_discord();
             }
 
@@ -131,6 +175,9 @@ impl App {
                 self.player.load(&self.queue[prev].path);
                 self.player.play();
                 self.playing = true;
+                self.scrobble_timer = 0.0;
+                self.scrobbled = false;
+                self.current_duration_secs = parse_duration(&self.queue[prev].duration);
                 self.update_discord();
             }
 
@@ -147,14 +194,92 @@ impl App {
                 self.lastfm_track = track;
                 self.update_discord();
             }
+
+            Message::StartAuth => {
+                let key = self.scrobbler.api_key.clone();
+                let secret = self.scrobbler.api_secret.clone();
+                return Task::perform(
+                    async move {
+                        let s = Scrobbler::new(key, secret);
+                        s.get_token().await
+                    },
+                    Message::AuthTokenReceived,
+                );
+            }
+
+            Message::AuthTokenReceived(Some(token)) => {
+                let url = self.scrobbler.auth_url(&token);
+                let _ = open::that(url);
+                self.auth_token = Some(token);
+            }
+
+            Message::AuthTokenReceived(None) => {}
+
+            Message::CompleteAuth => {
+                if let Some(token) = self.auth_token.clone() {
+                    let key = self.scrobbler.api_key.clone();
+                    let secret = self.scrobbler.api_secret.clone();
+                    return Task::perform(
+                        async move {
+                            let mut s = Scrobbler::new(key, secret);
+                            let ok = s.get_session(&token).await;
+                            if ok { s.session_key } else { None }
+                        },
+                        Message::AuthCompleted,
+                    );
+                }
+            }
+
+            // session key comes back from the async block, store it on self
+            Message::AuthCompleted(Some(sk)) => {
+                self.scrobbler.session_key = Some(sk);
+                println!("Last.fm auth successful!");
+            }
+
+            Message::AuthCompleted(None) => {
+                println!("Last.fm auth failed — did you approve it in the browser?");
+            }
+
+            Message::ScrobbleTick => {
+                if self.playing {
+                    self.scrobble_timer += 1.0;
+
+                    let threshold = (self.current_duration_secs as f32 * 0.5)
+                        .min(240.0)
+                        .max(30.0);
+
+                    if !self.scrobbled && self.scrobble_timer >= threshold {
+                        self.scrobbled = true;
+                        if let Some(track) = self.current.and_then(|i| self.queue.get(i)) {
+                            let artist = track.artist.clone();
+                            let title = track.title.clone();
+                            let album = track.album.clone();  // fixed: was using title twice
+                            if let Some(sk) = self.scrobbler.session_key.clone() {
+                                let key = self.scrobbler.api_key.clone();
+                                let secret = self.scrobbler.api_secret.clone();
+                                return Task::perform(
+                                    async move {
+                                        let s = Scrobbler::new_with_session(key, secret, sk);
+                                        s.scrobble(&artist, &title, &album).await;
+                                    },
+                                    |_| Message::ScrobbleTick,  // no-op response
+                                );
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         Task::none()
     }
 
     fn subscription(&self) -> iced::Subscription<Message> {
-        iced::time::every(std::time::Duration::from_secs(10))
-            .map(|_| Message::LastfmTick)
+        let lastfm = iced::time::every(std::time::Duration::from_secs(10))
+            .map(|_| Message::LastfmTick);
+        let scrobble = iced::time::every(std::time::Duration::from_secs(1))
+            .map(|_| Message::ScrobbleTick);
+        iced::Subscription::batch(vec![lastfm, scrobble])
     }
 }
 
@@ -176,12 +301,29 @@ impl App {
     }
 
     fn track_list_view(&self) -> Element<Message> {
+        let auth_btn: Element<Message> = if self.scrobbler.is_authenticated() {
+            text("● Last.fm").size(13).into()
+        } else {
+            button(" Connect Last.fm ").on_press(Message::StartAuth).into()
+        };
+
+        let confirm_btn: Element<Message> = if self.auth_token.is_some()
+            && !self.scrobbler.is_authenticated()
+        {
+            button(" I approved it ").on_press(Message::CompleteAuth).into()
+        } else {
+            Space::with_width(0).into()
+        };
+
         let toolbar = row![
             text("Library").size(22),
             Space::with_width(Length::Fill),
+            confirm_btn,
+            auth_btn,
             button(" Open Folder ").on_press(Message::OpenFolder),
         ]
         .padding([16, 24])
+        .spacing(12)
         .align_y(iced::Alignment::Center);
 
         let headers = row![
@@ -409,6 +551,14 @@ impl App {
                     activity::Button::new("🎵 Rustify", "https://github.com/kashsuks/Rustify")
                 ])
         );
+    }
+}
+
+fn parse_duration(s: &str) -> u64 {
+    let parts: Vec<&str> = s.split(':').collect();
+    match parts.as_slice() {
+        [m, s] => m.parse::<u64>().unwrap_or(0) * 60 + s.parse::<u64>().unwrap_or(0),
+        _ => 0,
     }
 }
 
