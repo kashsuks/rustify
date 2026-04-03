@@ -1029,14 +1029,14 @@ impl App {
         let play_pause = if self.playing {
             button(
                 iced::widget::Text::from(Icon::CirclePause)
-                    .size(28)
+                    .size(22)
             )
             .on_press(Message::Pause)
             .padding([10, 14])
         } else {
             button(
                 iced::widget::Text::from(Icon::CirclePlay)
-                    .size(28)
+                    .size(22)
             )
             .on_press(Message::Play)
             .padding([10, 14])
