@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 iced = { version = "0.13", features = ["tokio", "image"] }
+lucide-icons = { version = "0.575.0", features = ["iced"] }
 rodio = { version = "0.20", features = ["symphonia-all"] }
 rfd = "0.15"
 walkdir = "2"
