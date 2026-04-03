@@ -12,7 +12,11 @@ impl Player {
         let (_stream, handle) = OutputStream::try_default()
             .expect("No audio output device found");
         let sink = Sink::try_new(&handle).unwrap();
-        Self { _stream, handle, sink }
+        Self {
+            _stream,
+            handle,
+            sink,
+        }
     }
 
     pub fn load(&mut self, path: &Path) {
@@ -21,9 +25,14 @@ impl Player {
         let file = BufReader::new(File::open(path).unwrap());
         let source = Decoder::new(file).unwrap();
         self.sink.append(source);
-        self.sink.pause(); // wait for an explicit play()
+        self.sink.pause();
     }
 
-    pub fn play(&self) { self.sink.play(); }
-    pub fn pause(&self) { self.sink.pause(); }
+    pub fn play(&self) {
+        self.sink.play();
+    }
+
+    pub fn pause(&self) {
+        self.sink.pause();
+    }
 }

@@ -1,4 +1,3 @@
-use md5;
 use reqwest::Client;
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -35,15 +34,14 @@ impl Scrobbler {
         self.session_key.is_some()
     }
 
-    // getting a token is the first step
     pub async fn get_token(&self) -> Option<String> {
         let mut params = HashMap::new();
         params.insert("method", "auth.getToken");
         params.insert("api_key", &self.api_key);
 
         let sig = self.sign(&params);
-        eprintln!("DEBUG get_token: sig={}", sig);
-        let resp = self.client
+        let resp = self
+            .client
             .get(API_URL)
             .query(&[
                 ("method", "auth.getToken"),
@@ -52,13 +50,12 @@ impl Scrobbler {
                 ("format", "json"),
             ])
             .send()
-            .await.ok()?;
+            .await
+            .ok()?;
         let json: serde_json::Value = resp.json().await.ok()?;
-        eprintln!("DEBUG get_token response: {}", json);
-        json["token"].as_str().map(|s| s.to_string())
+        json["token"].as_str().map(|token| token.to_string())
     }
-    
-    // and then authenticate the user using token
+
     pub fn auth_url(&self, token: &str) -> String {
         format!(
             "https://www.last.fm/api/auth/?api_key={}&token={}",
@@ -73,8 +70,8 @@ impl Scrobbler {
         params.insert("token", token);
 
         let sig = self.sign(&params);
-        eprintln!("DEBUG get_session: token={}, sig={}", token, sig);
-        let resp = self.client
+        let resp = self
+            .client
             .get(API_URL)
             .query(&[
                 ("method", "auth.getSession"),
@@ -87,45 +84,43 @@ impl Scrobbler {
             .await;
 
         match resp {
-            Ok(r) => {
-                match r.json::<serde_json::Value>().await {
-                    Ok(json) => {
-                        eprintln!("DEBUG get_session response: {}", json);
-                        if let Some(sk) = json["session"]["key"].as_str() {
-                            self.session_key = Some(sk.to_string());
-                            return true;
-                        }
-                        if let Some(msg) = json["message"].as_str() {
-                            eprintln!("Last.fm error: {}", msg);
-                        }
+            Ok(response) => match response.json::<serde_json::Value>().await {
+                Ok(json) => {
+                    if let Some(session_key) = json["session"]["key"].as_str() {
+                        self.session_key = Some(session_key.to_string());
+                        return true;
                     }
-                    Err(e) => eprintln!("Failed to parse response: {}", e),
                 }
-            }
-            Err(e) => eprintln!("Request failed: {}", e),
+                Err(error) => eprintln!("Failed to parse response: {}", error),
+            },
+            Err(error) => eprintln!("Request failed: {}", error),
         }
+
         false
     }
 
     pub async fn update_now_playing(&self, artist: &str, track: &str, album: &str) {
-        let Some(sk) = &self.session_key else { return };
+        let Some(session_key) = &self.session_key else {
+            return;
+        };
 
         let mut params = HashMap::new();
         params.insert("method", "track.updateNowPlaying");
         params.insert("api_key", &self.api_key);
-        params.insert("sk", sk);
+        params.insert("sk", session_key);
         params.insert("artist", artist);
         params.insert("track", track);
         params.insert("album", album);
 
         let sig = self.sign(&params);
 
-        let _ = self.client
+        let _ = self
+            .client
             .post(API_URL)
             .form(&[
                 ("method", "track.updateNowPlaying"),
                 ("api_key", &self.api_key),
-                ("sk", sk),
+                ("sk", session_key),
                 ("artist", artist),
                 ("track", track),
                 ("album", album),
@@ -137,7 +132,9 @@ impl Scrobbler {
     }
 
     pub async fn scrobble(&self, artist: &str, track: &str, album: &str) {
-        let Some(sk) = &self.session_key else { return };
+        let Some(session_key) = &self.session_key else {
+            return;
+        };
 
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -148,7 +145,7 @@ impl Scrobbler {
         let mut params = HashMap::new();
         params.insert("method", "track.scrobble");
         params.insert("api_key", &self.api_key);
-        params.insert("sk", sk);
+        params.insert("sk", session_key);
         params.insert("artist", artist);
         params.insert("track", track);
         params.insert("album", album);
@@ -156,12 +153,13 @@ impl Scrobbler {
 
         let sig = self.sign(&params);
 
-        let _ = self.client
+        let _ = self
+            .client
             .post(API_URL)
             .form(&[
                 ("method", "track.scrobble"),
                 ("api_key", &self.api_key),
-                ("sk", sk),
+                ("sk", session_key),
                 ("artist", artist),
                 ("track", track),
                 ("album", album),
@@ -173,7 +171,6 @@ impl Scrobbler {
             .await;
     }
 
-    // Last.fm requires all POST params to be signed with md5
     fn sign(&self, params: &HashMap<&str, &str>) -> String {
         let mut keys: Vec<&&str> = params.keys().collect();
         keys.sort();
@@ -185,7 +182,6 @@ impl Scrobbler {
         }
         base.push_str(&self.api_secret);
 
-        eprintln!("DEBUG sign: base='{}', secret_len={}", base, self.api_secret.len());
         format!("{:x}", md5::compute(base.as_bytes()))
     }
 }

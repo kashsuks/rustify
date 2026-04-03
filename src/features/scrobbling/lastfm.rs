@@ -38,10 +38,7 @@ struct RecentTrackResponse {
     recenttracks: RecentTracksInner,
 }
 
-pub async fn get_now_playing(
-    api_key: &str,
-    username: &str
-) -> Option<Track> {
+pub async fn get_now_playing(api_key: &str, username: &str) -> Option<Track> {
     let url = format!(
         "https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks\
         &user={}&api_key={}&format=json&limit=1",
@@ -50,11 +47,14 @@ pub async fn get_now_playing(
 
     let resp = reqwest::get(&url).await.ok()?;
     let data: RecentTrackResponse = resp.json().await.ok()?;
-
     let track = data.recenttracks.track.into_iter().next()?;
 
-    // only return if it has a now playing tag
-    if track.attr.as_ref().map(|a| a.nowplaying == "true").unwrap_or(false) {
+    if track
+        .attr
+        .as_ref()
+        .map(|attr| attr.nowplaying == "true")
+        .unwrap_or(false)
+    {
         Some(track)
     } else {
         None

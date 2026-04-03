@@ -22,8 +22,12 @@ pub fn cache_key(filename: &str, duration_secs: u64) -> String {
 }
 
 pub fn load() -> HashMap<String, CachedLink> {
-    let Some(path) = cache_path() else { return HashMap::new() };
-    let Ok(data) = std::fs::read_to_string(&path) else { return HashMap::new() };
+    let Some(path) = cache_path() else {
+        return HashMap::new();
+    };
+    let Ok(data) = std::fs::read_to_string(&path) else {
+        return HashMap::new();
+    };
     serde_json::from_str(&data).unwrap_or_default()
 }
 

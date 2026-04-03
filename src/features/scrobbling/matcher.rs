@@ -1,7 +1,5 @@
 use serde::Deserialize;
 
-// How long we wait between lastfm scan requests (in ms)
-// increase based on rate limits
 pub const SCAN_DELAY_MS: u64 = 1000;
 
 #[derive(Debug, Clone)]
@@ -42,40 +40,40 @@ struct TrackMatch {
     duration: Option<String>,
 }
 
-pub async fn search_tracks(
-    api_key: &str,
-    title: &str,
-    artist: &str,
-) -> Vec<SearchResult> {
+pub async fn search_tracks(api_key: &str, title: &str, artist: &str) -> Vec<SearchResult> {
     let url = format!(
         "https://ws.audioscrobbler.com/2.0/?method=track.search\
          &track={}&artist={}&api_key={}&format=json&limit=8",
-         urlencoding::encode(title),
-         urlencoding::encode(artist),
-         api_key
+        urlencoding::encode(title),
+        urlencoding::encode(artist),
+        api_key
     );
 
-    let Ok(resp) = reqwest::get(&url).await else { return vec![] };
-    let Ok(data) = resp.json::<SearchResponse>().await else { return vec![] };
-    
-    data.results.trackmatches.track
+    let Ok(resp) = reqwest::get(&url).await else {
+        return vec![];
+    };
+    let Ok(data) = resp.json::<SearchResponse>().await else {
+        return vec![];
+    };
+
+    data.results
+        .trackmatches
+        .track
         .into_iter()
-        .map(|t| SearchResult {
-            duration_secs: t.duration
+        .map(|track| SearchResult {
+            duration_secs: track
+                .duration
                 .as_deref()
-                .and_then(|d| d.parse::<u64>().ok())
+                .and_then(|duration| duration.parse::<u64>().ok())
                 .unwrap_or(0),
-            mbid: t.mbid.unwrap_or_default(),
-            title: t.name,
-            artist: t.artist,
+            mbid: track.mbid.unwrap_or_default(),
+            title: track.name,
+            artist: track.artist,
         })
         .collect()
 }
 
-pub async fn search_tracks_by_query(
-    api_key: &str,
-    query: &str,
-) -> Vec<SearchResult> {
+pub async fn search_tracks_by_query(api_key: &str, query: &str) -> Vec<SearchResult> {
     let url = format!(
         "https://ws.audioscrobbler.com/2.0/?method=track.search\
          &track={}&api_key={}&format=json&limit=8",
@@ -83,19 +81,26 @@ pub async fn search_tracks_by_query(
         api_key
     );
 
-    let Ok(resp) = reqwest::get(&url).await else { return vec![] };
-    let Ok(data) = resp.json::<SearchResponse>().await else { return vec![] };
+    let Ok(resp) = reqwest::get(&url).await else {
+        return vec![];
+    };
+    let Ok(data) = resp.json::<SearchResponse>().await else {
+        return vec![];
+    };
 
-    data.results.trackmatches.track
+    data.results
+        .trackmatches
+        .track
         .into_iter()
-        .map(|t| SearchResult {
-            duration_secs: t.duration
+        .map(|track| SearchResult {
+            duration_secs: track
+                .duration
                 .as_deref()
-                .and_then(|d| d.parse::<u64>().ok())
+                .and_then(|duration| duration.parse::<u64>().ok())
                 .unwrap_or(0),
-            mbid: t.mbid.unwrap_or_default(),
-            title: t.name,
-            artist: t.artist,
+            mbid: track.mbid.unwrap_or_default(),
+            title: track.name,
+            artist: track.artist,
         })
         .collect()
 }
@@ -108,17 +113,17 @@ pub async fn try_auto_match(
 ) -> AutoMatchResult {
     let results = search_tracks(api_key, title, artist).await;
 
-    for r in &results {
-        let title_match = r.title.to_lowercase() == title.to_lowercase();
-        let artist_match = r.artist.to_lowercase() == artist.to_lowercase();
+    for result in &results {
+        let title_match = result.title.to_lowercase() == title.to_lowercase();
+        let artist_match = result.artist.to_lowercase() == artist.to_lowercase();
         let duration_match = duration_secs == 0
-            || r.duration_secs == 0
-            || (r.duration_secs as i64 - duration_secs as i64).abs() <= 10;
+            || result.duration_secs == 0
+            || (result.duration_secs as i64 - duration_secs as i64).abs() <= 10;
 
         if title_match && artist_match && duration_match {
             return AutoMatchResult::Matched {
-                title: r.title.clone(),
-                artist: r.artist.clone(),
+                title: result.title.clone(),
+                artist: result.artist.clone(),
             };
         }
     }

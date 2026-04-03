@@ -1,0 +1,109 @@
+use crate::audio::player::Player;
+use crate::features::discord_rpc::DiscordRpc;
+use crate::features::scrobbling::cache::{self, CachedLink};
+use crate::features::scrobbling::lastfm::Track as LastfmTrack;
+use crate::features::scrobbling::matcher::{AutoMatchResult, SearchResult};
+use crate::features::scrobbling::scrobbler::Scrobbler;
+use std::collections::HashMap;
+use std::path::PathBuf;
+
+#[derive(Debug, Clone)]
+pub enum MatchState {
+    Idle,
+    Scanning { total: usize, done: usize },
+    Reviewing {
+        pending: Vec<usize>,
+        search_query: String,
+        search_results: Vec<SearchResult>,
+        search_loading: bool,
+        preview_playing: bool,
+    },
+    Done,
+}
+
+#[derive(Debug, Clone)]
+pub enum Message {
+    OpenFolder,
+    FolderPicked(Option<PathBuf>),
+    SelectTrack(usize),
+    Play,
+    Pause,
+    Next,
+    Previous,
+    LastfmTick,
+    LastfmUpdated(Option<LastfmTrack>),
+    StartAuth,
+    AuthTokenReceived(Option<String>),
+    CompleteAuth,
+    AuthCompleted(Option<String>),
+    ScrobbleTick,
+    ScanTrack(usize),
+    TrackScanned(usize, AutoMatchResult),
+    SearchQueryChanged(String),
+    SearchSubmitted,
+    SearchResults(Vec<SearchResult>),
+    LinkTrack(usize, SearchResult),
+    SkipTrack(usize),
+    PreviewToggle,
+}
+
+pub struct TrackMeta {
+    pub(crate) path: PathBuf,
+    pub(crate) title: String,
+    pub(crate) artist: String,
+    pub(crate) album: String,
+    pub(crate) duration: String,
+    pub(crate) duration_secs: u64,
+    pub(crate) artwork: Option<Vec<u8>>,
+    pub(crate) lastfm_title: Option<String>,
+    pub(crate) lastfm_artist: Option<String>,
+    pub(crate) linked: bool,
+}
+
+pub struct App {
+    pub(crate) player: Player,
+    pub(crate) queue: Vec<TrackMeta>,
+    pub(crate) current: Option<usize>,
+    pub(crate) playing: bool,
+    pub(crate) discord: DiscordRpc,
+    pub(crate) lastfm_track: Option<LastfmTrack>,
+    pub(crate) lastfm_api_key: String,
+    pub(crate) lastfm_username: String,
+    pub(crate) scrobbler: Scrobbler,
+    pub(crate) auth_token: Option<String>,
+    pub(crate) scrobble_timer: f32,
+    pub(crate) current_duration_secs: u64,
+    pub(crate) scrobbled: bool,
+    pub(crate) match_state: MatchState,
+    pub(crate) link_cache: HashMap<String, CachedLink>,
+}
+
+impl App {
+    pub fn new() -> Self {
+        dotenvy::dotenv().ok();
+
+        let client_id = std::env::var("DISCORD_CLIENT_ID").unwrap_or_default();
+        let lastfm_api_key = std::env::var("LASTFM_API_KEY").unwrap_or_default();
+        let lastfm_username = std::env::var("LASTFM_USERNAME").unwrap_or_default();
+        let api_key = std::env::var("LASTFM_API_KEY").unwrap_or_default();
+        let api_secret = std::env::var("LASTFM_API_SECRET").unwrap_or_default();
+
+        Self {
+            player: Player::new(),
+            queue: vec![],
+            current: None,
+            playing: false,
+            discord: DiscordRpc::connect(&client_id),
+            lastfm_track: None,
+            lastfm_api_key,
+            lastfm_username,
+            scrobbler: Scrobbler::new(api_key, api_secret),
+            auth_token: None,
+            scrobble_timer: 0.0,
+            current_duration_secs: 0,
+            scrobbled: false,
+            match_state: MatchState::Idle,
+            link_cache: cache::load(),
+        }
+    }
+}
