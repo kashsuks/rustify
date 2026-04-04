@@ -282,25 +282,9 @@ impl App {
     }
 
     fn track_list_view(&self) -> Element<'_, Message> {
-        let auth_btn: Element<Message> = if self.scrobbler.is_authenticated() {
-            text("● Last.fm").size(13).into()
-        } else {
-            button(" Connect Last.fm ").on_press(Message::StartAuth).into()
-        };
-
-        let confirm_btn: Element<Message> = if self.auth_token.is_some()
-            && !self.scrobbler.is_authenticated()
-        {
-            button(" I approved it ").on_press(Message::CompleteAuth).into()
-        } else {
-            Space::with_width(0).into()
-        };
-
         let toolbar = row![
             text("Library").size(22),
             Space::with_width(Length::Fill),
-            confirm_btn,
-            auth_btn,
             button(" Settings ").on_press(Message::OpenSettings),
             button(" Open Folder ").on_press(Message::OpenFolder),
         ]
