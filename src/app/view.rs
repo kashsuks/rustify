@@ -7,32 +7,37 @@ use lucide_icons::Icon;
 
 impl App {
     pub fn view(&self) -> Element<'_, Message> {
-        let is_reviewing = matches!(self.match_state, MatchState::Reviewing { .. });
-        let main_ui = self.main_view(is_reviewing);
+        match self.screen {
+            crate::app::state::Screen::Library => {
+                let is_reviewing = matches!(self.match_state, MatchState::Reviewing { .. });
+                let main_ui = self.main_view(is_reviewing);
 
-        if let MatchState::Reviewing {
-            pending,
-            search_query,
-            search_results,
-            search_loading,
-            preview_playing,
-        } = &self.match_state
-        {
-            let modal = self.review_modal(
-                pending,
-                search_query,
-                search_results,
-                *search_loading,
-                *preview_playing,
-            );
+                if let MatchState::Reviewing { 
+                    pending, 
+                    search_query, 
+                    search_results, 
+                    search_loading, 
+                    preview_playing 
+                } = &self.match_state
+                {
+                    let modal = self.review_modal(
+                        pending, 
+                        search_query, 
+                        search_results, 
+                        *search_loading, 
+                        *preview_playing
+                    );
 
-            return iced::widget::stack([main_ui, modal])
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .into();
+                    return iced::widget::stack([main_ui, modal])
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .into();
+                }
+
+                main_ui
+            }
+            crate::app::state::Screen::Settings => self.settings_view(),
         }
-
-        main_ui
     }
 
     fn main_view(&self, dimmed: bool) -> Element<'_, Message> {
@@ -296,6 +301,7 @@ impl App {
             Space::with_width(Length::Fill),
             confirm_btn,
             auth_btn,
+            button(" Settings ").on_press(Message::OpenSettings),
             button(" Open Folder ").on_press(Message::OpenFolder),
         ]
         .padding([16, 24])
@@ -388,6 +394,45 @@ impl App {
                 }
             })
             .into()
+    }
+
+    fn settings_view(&self) -> Element<'_, Message> {
+        let header = row![
+            text("Settings").size(28),
+            Space::with_width(Length::Fill),
+            button(" Back ").on_press(Message::CloseSettings),
+        ]
+        .align_y(iced::Alignment::Center)
+        .spacing(12);
+
+        let lastfm_section= column![
+            text("Connections").size(22),
+            text("Last.fm").size(18),
+            text_input("Username",  &self.settings_lastfm_username)
+                .on_input(Message::SettingsLastfmUsernameChanged)
+                .padding(10),
+            text_input("API Key", &self.settings_lastfm_api_key)
+                .on_input(Message::SettingsLastfmApiKeyChanged)
+                .padding(10),
+            text_input("API Secret",&self.settings_lastfm_api_secret)
+                .on_input(Message::SettingsLastfmApiSecretChanged)
+                .padding(10),
+            row![
+                button(" Connect Last.fm ").on_press(Message::StartAuth),
+                button(" Save ").on_press(Message::SaveSettings),
+            ]
+            .spacing(12)
+        ]
+        .spacing(12);
+
+        container(
+            column![header, horizontal_rule(1), lastfm_section]
+                .spacing(24)
+                .padding(32)
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
     }
 
     fn now_playing_view(&self) -> Element<'_, Message> {

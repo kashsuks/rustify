@@ -130,6 +130,46 @@ impl App {
                 Task::none()
             }
             Message::ScrobbleTick => self.handle_scrobble_tick(),
+            Message::OpenSettings => {
+                self.screen = crate::app::state::Screen::Settings;
+                Task::none()
+            }
+            Message::CloseSettings => {
+                self.screen = crate::app::state::Screen::Library;
+                Task::none()
+            }
+            Message::SettingsLastfmUsernameChanged(value) => {
+                self.settings_lastfm_username = value;
+                Task::none()
+            }
+            Message::SettingsLastfmApiKeyChanged(value) => {
+                self.settings_lastfm_api_key = value;
+                Task::none()
+            }
+            Message::SettingsLastfmApiSecretChanged(value) => {
+                self.settings_lastfm_api_secret = value;
+                Task::none()
+            }
+            Message::SaveSettings => {
+                if let Err(err) = crate::features::settings::env::write_lastfm_settings(
+                    &self.settings_lastfm_api_key,
+                    &self.settings_lastfm_api_secret,
+                    &self.settings_lastfm_username,
+                ) {
+                    eprintln!("Failed to save settings: {}", err);
+                    return Task::none();
+                }
+
+                self.lastfm_api_key = self.settings_lastfm_api_key.clone();
+                self.settings_lastfm_api_secret = self.settings_lastfm_api_secret.clone();
+                self.lastfm_username = self.settings_lastfm_username.clone();
+                self.scrobbler = Scrobbler::new(
+                    self.lastfm_api_key.clone(),
+                    self.settings_lastfm_api_secret.clone(),
+                );
+
+                Task::none()
+            }
         }
     }
 

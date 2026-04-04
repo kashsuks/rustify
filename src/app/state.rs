@@ -45,6 +45,12 @@ pub enum Message {
     LinkTrack(usize, SearchResult),
     SkipTrack(usize),
     PreviewToggle,
+    OpenSettings,
+    CloseSettings,
+    SettingsLastfmUsernameChanged(String),
+    SettingsLastfmApiKeyChanged(String),
+    SettingsLastfmApiSecretChanged(String),
+    SaveSettings,
 }
 
 pub struct TrackMeta {
@@ -58,6 +64,12 @@ pub struct TrackMeta {
     pub(crate) lastfm_title: Option<String>,
     pub(crate) lastfm_artist: Option<String>,
     pub(crate) linked: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Screen {
+    Library,
+    Settings,
 }
 
 pub struct App {
@@ -76,6 +88,10 @@ pub struct App {
     pub(crate) scrobbled: bool,
     pub(crate) match_state: MatchState,
     pub(crate) link_cache: HashMap<String, CachedLink>,
+    pub(crate) screen: Screen,
+    pub(crate) settings_lastfm_username: String,
+    pub(crate) settings_lastfm_api_key: String,
+    pub(crate) settings_lastfm_api_secret: String,
 }
 
 impl App {
@@ -96,8 +112,12 @@ impl App {
             discord: DiscordRpc::connect(&client_id),
             lastfm_track: None,
             lastfm_api_key,
-            lastfm_username,
-            scrobbler: Scrobbler::new(api_key, api_secret),
+            lastfm_username: lastfm_username.clone(),
+            scrobbler: Scrobbler::new(api_key.clone(), api_secret.clone()),
+            screen: Screen::Library,
+            settings_lastfm_username: lastfm_username,
+            settings_lastfm_api_key: api_key,
+            settings_lastfm_api_secret: api_secret,
             auth_token: None,
             scrobble_timer: 0.0,
             current_duration_secs: 0,
