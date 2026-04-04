@@ -50,6 +50,8 @@ pub enum Message {
     SettingsLastfmUsernameChanged(String),
     SettingsLastfmApiKeyChanged(String),
     SettingsLastfmApiSecretChanged(String),
+    SettingsApiKeyHoverChanged(bool),
+    SettingsApiSecretHoverChanged(bool),
     SaveSettings,
 }
 
@@ -92,6 +94,8 @@ pub struct App {
     pub(crate) settings_lastfm_username: String,
     pub(crate) settings_lastfm_api_key: String,
     pub(crate) settings_lastfm_api_secret: String,
+    pub(crate) hover_show_lastfm_api_key: bool,
+    pub(crate) hover_show_lastfm_api_secret: bool,
 }
 
 impl App {
@@ -118,6 +122,8 @@ impl App {
             settings_lastfm_username: lastfm_username,
             settings_lastfm_api_key: api_key,
             settings_lastfm_api_secret: api_secret,
+            hover_show_lastfm_api_key: false,
+            hover_show_lastfm_api_secret: false,
             auth_token: None,
             scrobble_timer: 0.0,
             current_duration_secs: 0,

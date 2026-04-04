@@ -170,6 +170,14 @@ impl App {
 
                 Task::none()
             }
+            Message::SettingsApiKeyHoverChanged(value) => {
+                self.hover_show_lastfm_api_key = value;
+                Task::none()
+            }
+            Message::SettingsApiSecretHoverChanged(value) => {
+                self.hover_show_lastfm_api_secret = value;
+                Task::none()
+            }
         }
     }
 
