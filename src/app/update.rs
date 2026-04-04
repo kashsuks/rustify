@@ -98,36 +98,53 @@ impl App {
                 let url = self.scrobbler.auth_url(&token);
                 let _ = open::that(url);
                 self.auth_token = Some(token);
-                Task::none()
+                self.auth_poll_attempts_left = 15;
+                Task::done(Message::AuthPollTick)
             }
             Message::AuthTokenReceived(None) => Task::none(),
-            Message::CompleteAuth => {
-                if let Some(token) = self.auth_token.clone() {
-                    let key = self.scrobbler.api_key.clone();
-                    let secret = self.scrobbler.api_secret.clone();
-                    return Task::perform(
-                        async move {
-                            let mut scrobbler = Scrobbler::new(key, secret);
-                            let ok = scrobbler.get_session(&token).await;
-                            if ok {
-                                scrobbler.session_key
-                            } else {
-                                None
-                            }
-                        },
-                        Message::AuthCompleted,
-                    );
-                }
-                Task::none()
-            }
             Message::AuthCompleted(Some(session_key)) => {
                 self.scrobbler.session_key = Some(session_key);
+                self.auth_token = None;
+                self.auth_poll_attempts_left = 0;
                 println!("Last.fm auth successful!");
                 Task::none()
             }
             Message::AuthCompleted(None) => {
-                println!("Last.fm auth failed — did you approve it in the browser?");
-                Task::none()
+                if self.auth_poll_attempts_left > 0 && self.auth_token.is_some() {
+                    Task::done(Message::AuthPollTick)
+                } else {
+                    println!("Last.fm auth timed out or was not approved.");
+                    self.auth_token = None;
+                    Task::none()
+                }
+            }
+            Message::AuthPollTick => {
+                let Some(token) = self.auth_token.clone() else {
+                    return Task::none();
+                };
+
+                if self.auth_poll_attempts_left == 0 {
+                    return Task::none();
+                }
+
+                self.auth_poll_attempts_left -= 1;
+
+                let key = self.scrobbler.api_key.clone();
+                let secret = self.scrobbler.api_secret.clone();
+
+                Task::perform(
+                    async move {
+                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                        let mut scrobbler = Scrobbler::new(key, secret);
+                        let ok = scrobbler.get_session(&token).await;
+                        if ok {
+                            scrobbler.session_key
+                        } else {
+                            None
+                        }
+                    },
+                    Message::AuthCompleted,
+                )
             }
             Message::ScrobbleTick => self.handle_scrobble_tick(),
             Message::OpenSettings => {
@@ -161,7 +178,8 @@ impl App {
                 }
 
                 self.lastfm_api_key = self.settings_lastfm_api_key.clone();
-                self.settings_lastfm_api_secret = self.settings_lastfm_api_secret.clone();
+                self.scrobbler.api_key = self.settings_lastfm_api_key.clone();
+                self.scrobbler.api_secret = self.settings_lastfm_api_secret.clone();
                 self.lastfm_username = self.settings_lastfm_username.clone();
                 self.scrobbler = Scrobbler::new(
                     self.lastfm_api_key.clone(),
