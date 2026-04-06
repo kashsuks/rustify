@@ -288,24 +288,39 @@ impl App {
     }
 
     fn track_list_view(&self) -> Element<'_, Message> {
+        let open_folder_btn = button(
+            container(iced::widget::Text::from(Icon::FolderOpen).size(18))
+                .center_x(Length::Fill)
+                .center_y(Length::Fill)
+        )
+        .width(44)
+        .height(44)
+        .style(|theme, status| {
+            let mut style = button::primary(theme, status);
+            style.border.radius = 12.0.into();
+            style
+        })
+        .on_press(Message::OpenFolder);
+
+        let settings_btn = button(
+            container(iced::widget::Text::from(Icon::Settings).size(18))
+                .center_x(Length::Fill)
+                .center_y(Length::Fill)
+        )
+        .width(44)
+        .height(44)
+        .style(|theme, status| {
+            let mut style = button::primary(theme, status);
+            style.border.radius = 12.0.into();
+            style
+        })
+        .on_press(Message::OpenSettings);
+
         let toolbar = row![
+            open_folder_btn,
             text("Library").size(22),
             Space::with_width(Length::Fill),
-            button(iced::widget::Text::from(Icon::Settings).size(18))
-                .padding([10, 12])
-                .style(|theme, status| {
-                    let mut style = button::primary(theme, status);
-                    style.border.radius = 12.0.into();
-                    style
-                })
-                .on_press(Message::OpenSettings),
-            button(" Open Folder ")
-                .style(|theme, status| {
-                    let mut style = button::primary(theme, status);
-                    style.border.radius = 12.0.into();
-                    style
-                })
-                .on_press(Message::OpenFolder),
+            settings_btn,
         ]
         .padding([16, 24])
         .spacing(12)
@@ -491,6 +506,8 @@ impl App {
         });
 
         let previous_btn = button(iced::widget::Text::from(Icon::SkipBack).size(22))
+            .width(48)
+            .height(48)
             .style(|theme, status| {
                 let mut style = button::primary(theme, status);
                 style.border.radius = 14.0.into();
@@ -500,6 +517,8 @@ impl App {
 
         let play_pause = if self.playing {
             button(iced::widget::Text::from(Icon::CirclePause).size(22))
+                .width(48)
+                .height(48)
                 .style(|theme, status| {
                     let mut style = button::primary(theme, status);
                     style.border.radius = 14.0.into();
@@ -508,6 +527,8 @@ impl App {
             .on_press(Message::Pause)
         } else {
             button(iced::widget::Text::from(Icon::CirclePlay).size(22))
+                .width(48)
+                .height(48)
                 .style(|theme, status| {
                     let mut style = button::primary(theme, status);
                     style.border.radius = 14.0.into();
@@ -517,6 +538,8 @@ impl App {
         };
 
         let next_btn = button(iced::widget::Text::from(Icon::SkipForward).size(22))
+            .width(48)
+            .height(48)
             .style(|theme, status| {
                 let mut style = button::primary(theme, status);
                 style.border.radius = 14.0.into();
