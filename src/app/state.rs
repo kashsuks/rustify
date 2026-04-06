@@ -52,8 +52,10 @@ pub enum Message {
     SettingsLastfmApiSecretChanged(String),
     SettingsApiKeyHoverChanged(bool),
     SettingsApiSecretHoverChanged(bool),
+    LibrarySearchChanged(String),
     SaveSettings,
 }
+
 
 pub struct TrackMeta {
     pub(crate) path: PathBuf,
@@ -97,6 +99,7 @@ pub struct App {
     pub(crate) settings_lastfm_api_secret: String,
     pub(crate) hover_show_lastfm_api_key: bool,
     pub(crate) hover_show_lastfm_api_secret: bool,
+    pub(crate) library_search: String,
 }
 
 impl App {
@@ -125,6 +128,7 @@ impl App {
             settings_lastfm_api_secret: api_secret,
             hover_show_lastfm_api_key: false,
             hover_show_lastfm_api_secret: false,
+            library_search: String::new(),
             auth_token: None,
             auth_poll_attempts_left: 0,
             scrobble_timer: 0.0,

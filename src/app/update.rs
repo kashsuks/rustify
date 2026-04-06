@@ -196,6 +196,10 @@ impl App {
                 self.hover_show_lastfm_api_secret = value;
                 Task::none()
             }
+            Message::LibrarySearchChanged(value) => {
+                self.library_search = value;
+                Task::none()
+            }
         }
     }
 

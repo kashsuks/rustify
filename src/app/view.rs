@@ -316,10 +316,39 @@ impl App {
         })
         .on_press(Message::OpenSettings);
 
+        let search_bar = container(
+            row![
+            iced::widget::Text::from(Icon::Search).size(16),
+            text_input("What do you want to play?", &self.library_search)
+                .on_input(Message::LibrarySearchChanged)
+                .padding([10, 0])
+                .size(16)
+                .style(|theme, status| {
+                    let mut style = text_input::default(theme, status);
+                    style.background = iced::Background::Color(Color::TRANSPARENT);
+                    style.border.width = 0.0;
+                    style
+                }),
+            ]
+            .spacing(10)
+            .align_y(iced::Alignment::Center)
+        )
+        .padding([0, 16])
+        .height(44)
+        .width(Length::Fill)
+        .style(|_| container::Style {
+            background: Some(iced::Background::Color(Color::from_rgb(0.16, 0.17, 0.24))),
+            border: iced::Border {
+                radius: 14.0.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
         let toolbar = row![
             open_folder_btn,
             text("Library").size(22),
-            Space::with_width(Length::Fill),
+            search_bar,
             settings_btn,
         ]
         .padding([16, 24])
@@ -342,9 +371,20 @@ impl App {
                 .center_x(Length::Fill)
                 .into()
         } else {
-            let rows = column(self.queue.iter().enumerate().map(|(idx, track)| {
-                self.track_row(idx, track)
-            }))
+            let query = self.library_search.to_lowercase();
+
+            let rows = column(
+                self.queue
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, track)| {
+                        query.is_empty()
+                            || track.title.to_lowercase().contains(&query)
+                            || track.artist.to_lowercase().contains(&query)
+                            || track.album.to_lowercase().contains(&query)
+                    })
+                    .map(|(idx, track)| self.track_row(idx, track))
+            )
             .spacing(0);
 
             scrollable(rows).height(Length::Fill).into()
