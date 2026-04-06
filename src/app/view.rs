@@ -285,7 +285,9 @@ impl App {
         let toolbar = row![
             text("Library").size(22),
             Space::with_width(Length::Fill),
-            button(" Settings ").on_press(Message::OpenSettings),
+            button(iced::widget::Text::from(Icon::Settings).size(18))
+                .padding([10, 12])
+                .on_press(Message::OpenSettings),
             button(" Open Folder ").on_press(Message::OpenFolder),
         ]
         .padding([16, 24])
