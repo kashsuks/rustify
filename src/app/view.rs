@@ -198,7 +198,10 @@ impl App {
                                 0.2, 0.6, 0.3,
                             ))),
                             text_color: Color::WHITE,
-                            border: iced::Border::default(),
+                            border: iced::Border {
+                                radius: 10.0.into(),
+                                ..Default::default()
+                            },
                             shadow: iced::Shadow::default(),
                         }),
                 ]
@@ -242,7 +245,10 @@ impl App {
                         1.0, 1.0, 1.0, 0.1,
                     ))),
                     text_color: Color::WHITE,
-                    border: iced::Border::default(),
+                    border: iced::Border {
+                        radius: 10.0.into(),
+                        ..Default::default()
+                    },
                     shadow: iced::Shadow::default(),
                 }),
         ]
@@ -287,8 +293,19 @@ impl App {
             Space::with_width(Length::Fill),
             button(iced::widget::Text::from(Icon::Settings).size(18))
                 .padding([10, 12])
+                .style(|theme, status| {
+                    let mut style = button::primary(theme, status);
+                    style.border.radius = 12.0.into();
+                    style
+                })
                 .on_press(Message::OpenSettings),
-            button(" Open Folder ").on_press(Message::OpenFolder),
+            button(" Open Folder ")
+                .style(|theme, status| {
+                    let mut style = button::primary(theme, status);
+                    style.border.radius = 12.0.into();
+                    style
+                })
+                .on_press(Message::OpenFolder),
         ]
         .padding([16, 24])
         .spacing(12)
@@ -473,17 +490,39 @@ impl App {
             left: 0.0,
         });
 
-        let previous_btn =
-            button(iced::widget::Text::from(Icon::SkipBack).size(22)).on_press(Message::Previous);
+        let previous_btn = button(iced::widget::Text::from(Icon::SkipBack).size(22))
+            .style(|theme, status| {
+                let mut style = button::primary(theme, status);
+                style.border.radius = 14.0.into();
+                style
+            })
+            .on_press(Message::Previous);
 
         let play_pause = if self.playing {
-            button(iced::widget::Text::from(Icon::CirclePause).size(22)).on_press(Message::Pause)
+            button(iced::widget::Text::from(Icon::CirclePause).size(22))
+                .style(|theme, status| {
+                    let mut style = button::primary(theme, status);
+                    style.border.radius = 14.0.into();
+                    style
+                })
+            .on_press(Message::Pause)
         } else {
-            button(iced::widget::Text::from(Icon::CirclePlay).size(22)).on_press(Message::Play)
+            button(iced::widget::Text::from(Icon::CirclePlay).size(22))
+                .style(|theme, status| {
+                    let mut style = button::primary(theme, status);
+                    style.border.radius = 14.0.into();
+                    style
+                })
+                .on_press(Message::Play)
         };
 
-        let next_btn =
-            button(iced::widget::Text::from(Icon::SkipForward).size(22)).on_press(Message::Next);
+        let next_btn = button(iced::widget::Text::from(Icon::SkipForward).size(22))
+            .style(|theme, status| {
+                let mut style = button::primary(theme, status);
+                style.border.radius = 14.0.into();
+                style
+            })
+            .on_press(Message::Next);
 
         let controls = row![
             previous_btn.padding([10, 14]),
