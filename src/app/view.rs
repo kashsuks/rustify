@@ -507,8 +507,12 @@ impl App {
 
     fn now_playing_view(&self) -> Element<'_, Message> {
         let current_track = self.current.and_then(|idx| self.queue.get(idx));
-        let title = current_track.map(|track| track.title.as_str()).unwrap_or("No track selected");
-        let artist = current_track.map(|track| track.artist.as_str()).unwrap_or("");
+        let title = current_track
+            .and_then(|track| track.lastfm_title.as_deref().or(Some(track.title.as_str())))
+            .unwrap_or("No track selected");
+        let artist = current_track
+            .and_then(|track| track.lastfm_artist.as_deref().or(Some(track.artist.as_str())))
+            .unwrap_or("");
         let album = current_track.map(|track| track.album.as_str()).unwrap_or("");
 
         let art: Element<Message> = match current_track.and_then(|track| track.artwork.as_ref()) {

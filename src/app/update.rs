@@ -32,7 +32,15 @@ impl App {
             }
             Message::LinkTrack(queue_idx, result) => {
                 self.store_link(queue_idx, result.title, result.artist, false);
-                self.advance_review()
+
+                let review_task = self.advance_review();
+                let now_playing_task = if self.current == Some(queue_idx) && self.playing {
+                    self.refresh_now_playing(queue_idx)
+                } else {
+                    Task::none()
+                };
+
+                Task::batch(vec![review_task, now_playing_task])
             }
             Message::SkipTrack(queue_idx) => {
                 self.store_link(queue_idx, String::new(), String::new(), true);
@@ -408,6 +416,28 @@ impl App {
             *preview_playing = false;
         }
 
+        self.start_playback(idx)
+    }
+
+    fn play_next(&mut self) -> Task<Message> {
+        if self.queue.is_empty() {
+            return Task::none();
+        }
+
+        let next = self.current.map(|idx| (idx + 1) % self.queue.len()).unwrap_or(0);
+        self.start_playback(next)
+    }
+
+    fn play_previous(&mut self) -> Task<Message> {
+        if self.queue.is_empty() {
+            return Task::none();
+        }
+
+        let previous = self.current.map(|idx| idx.saturating_sub(1)).unwrap_or(0);
+        self.start_playback(previous)
+    }
+
+    fn start_playback(&mut self, idx: usize) -> Task<Message> {
         self.current = Some(idx);
         self.player.load(&self.queue[idx].path);
         self.player.play();
@@ -419,15 +449,7 @@ impl App {
         if let Some(session_key) = self.scrobbler.session_key.clone() {
             let api_key = self.scrobbler.api_key.clone();
             let api_secret = self.scrobbler.api_secret.clone();
-            let artist = self.queue[idx]
-                .lastfm_artist
-                .clone()
-                .unwrap_or_else(|| self.queue[idx].artist.clone());
-            let title = self.queue[idx]
-                .lastfm_title
-                .clone()
-                .unwrap_or_else(|| self.queue[idx].title.clone());
-            let album = self.queue[idx].album.clone();
+            let (artist, title, album) = self.scrobble_metadata(idx);
 
             return Task::perform(
                 async move {
@@ -438,40 +460,6 @@ impl App {
             );
         }
 
-        self.update_discord();
-        Task::none()
-    }
-
-    fn play_next(&mut self) -> Task<Message> {
-        if self.queue.is_empty() {
-            return Task::none();
-        }
-
-        let next = self.current.map(|idx| (idx + 1) % self.queue.len()).unwrap_or(0);
-        self.current = Some(next);
-        self.player.load(&self.queue[next].path);
-        self.player.play();
-        self.playing = true;
-        self.scrobble_timer = 0.0;
-        self.scrobbled = false;
-        self.current_duration_secs = self.queue[next].duration_secs;
-        self.update_discord();
-        Task::none()
-    }
-
-    fn play_previous(&mut self) -> Task<Message> {
-        if self.queue.is_empty() {
-            return Task::none();
-        }
-
-        let previous = self.current.map(|idx| idx.saturating_sub(1)).unwrap_or(0);
-        self.current = Some(previous);
-        self.player.load(&self.queue[previous].path);
-        self.player.play();
-        self.playing = true;
-        self.scrobble_timer = 0.0;
-        self.scrobbled = false;
-        self.current_duration_secs = self.queue[previous].duration_secs;
         self.update_discord();
         Task::none()
     }
@@ -504,15 +492,7 @@ impl App {
             return Task::none();
         };
 
-        let artist = track
-            .lastfm_artist
-            .clone()
-            .unwrap_or_else(|| track.artist.clone());
-        let title = track
-            .lastfm_title
-            .clone()
-            .unwrap_or_else(|| track.title.clone());
-        let album = track.album.clone();
+        let (artist, title, album) = self.scrobble_metadata(self.current.unwrap());
         let api_key = self.scrobbler.api_key.clone();
         let api_secret = self.scrobbler.api_secret.clone();
 
@@ -532,5 +512,38 @@ impl App {
         );
         discord.update(self);
         self.discord = discord;
+    }
+
+    fn scrobble_metadata(&self, idx: usize) -> (String, String, String) {
+        let track = &self.queue[idx];
+        let artist = track
+            .lastfm_artist
+            .clone()
+            .unwrap_or_else(|| track.artist.clone());
+        let title = track
+            .lastfm_title
+            .clone()
+            .unwrap_or_else(|| track.title.clone());
+        let album = track.album.clone();
+
+        (artist, title, album)
+    }
+
+    fn refresh_now_playing(&self, idx: usize) -> Task<Message> {
+        let Some(session_key) = self.scrobbler.session_key.clone() else {
+            return Task::none();
+        };
+
+        let api_key = self.scrobbler.api_key.clone();
+        let api_secret = self.scrobbler.api_secret.clone();
+        let (artist, title, album) = self.scrobble_metadata(idx);
+
+        Task::perform(
+            async move {
+                let scrobbler = Scrobbler::new_with_session(api_key, api_secret, session_key);
+                scrobbler.update_now_playing(&artist, &title, &album).await;
+            },
+            |_| Message::LastfmTick,
+        )
     }
 }
