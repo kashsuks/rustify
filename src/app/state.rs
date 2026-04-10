@@ -111,6 +111,12 @@ impl App {
         let lastfm_username = std::env::var("LASTFM_USERNAME").unwrap_or_default();
         let api_key = std::env::var("LASTFM_API_KEY").unwrap_or_default();
         let api_secret = std::env::var("LASTFM_API_SECRET").unwrap_or_default();
+        let session_key = std::env::var("LASTFM_SESSION_KEY").ok();
+
+        let scrobbler = match session_key {
+            Some(ref sk) => Scrobbler::new_with_session(api_key.clone(), api_secret.clone(), sk.clone()),
+            None => Scrobbler::new(api_key.clone(), api_secret.clone()),
+        };
 
         Self {
             player: Player::new(),
@@ -121,7 +127,7 @@ impl App {
             lastfm_track: None,
             lastfm_api_key,
             lastfm_username: lastfm_username.clone(),
-            scrobbler: Scrobbler::new(api_key.clone(), api_secret.clone()),
+            scrobbler,
             screen: Screen::Library,
             settings_lastfm_username: lastfm_username,
             settings_lastfm_api_key: api_key,

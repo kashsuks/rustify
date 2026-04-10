@@ -8,13 +8,25 @@ pub fn write_lastfm_settings(
     api_secret: &str,
     username: &str,
 ) -> io::Result<()> {
+    write_env_keys(&[
+        ("LASTFM_API_KEY", api_key),
+        ("LASTFM_API_SECRET", api_secret),
+        ("LASTFM_USERNAME", username),
+    ])
+}
+
+pub fn write_lastfm_session_key(session_key: &str) -> io::Result<()> {
+    write_env_keys(&[("LASTFM_SESSION_KEY", session_key)])
+}
+
+fn write_env_keys(entries: &[(&str, &str)]) -> io::Result<()> {
     let path = Path::new(".env");
     let existing = fs::read_to_string(path).unwrap_or_default();
 
     let mut map = parse_env(&existing);
-    map.insert("LASTFM_API_KEY".to_string(), api_key.to_string());
-    map.insert("LASTFM_API_SECRET".to_string(), api_secret.to_string());
-    map.insert("LASTFM_USERNAME".to_string(), username.to_string());
+    for (key, value) in entries {
+        map.insert(key.to_string(), value.to_string());
+    }
 
     let mut output = String::new();
     for (key, value) in map {

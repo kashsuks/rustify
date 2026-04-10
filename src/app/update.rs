@@ -111,10 +111,13 @@ impl App {
             }
             Message::AuthTokenReceived(None) => Task::none(),
             Message::AuthCompleted(Some(session_key)) => {
+                if let Err(err) = crate::features::settings::env::write_lastfm_session_key(&session_key) {
+                    eprintln!("Failed to persist Last.fm session key: {}", err);
+                }
                 self.scrobbler.session_key = Some(session_key);
                 self.auth_token = None;
                 self.auth_poll_attempts_left = 0;
-                println!("Last.fm auth successful!");
+                println!("Last.fm auth successful");
                 Task::none()
             }
             Message::AuthCompleted(None) => {
