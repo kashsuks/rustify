@@ -90,8 +90,27 @@ impl App {
                 )
             }
             Message::LastfmUpdated(track) => {
+                let changed = track.as_ref().map(|t| &t.name) != self.lastfm_track.as_ref().map(|t| &t.name);
                 self.lastfm_track = track;
                 self.update_discord();
+
+                if changed {
+                    self.lastfm_artwork = None;
+                    if let Some(ref t) = self.lastfm_track {
+                        let api_key = self.lastfm_api_key.clone();
+                        let artist = t.artist.text.clone();
+                        let name = t.name.clone();
+                        return Task::perform(
+                            async move { lastfm::get_track_info(&api_key, &artist, &name).await },
+                            Message::LastfmArtworkFetched,
+                        );
+                    }
+                }
+
+                Task::none()
+            }
+            Message::LastfmArtworkFetched(artwork) => {
+                self.lastfm_artwork = artwork;
                 Task::none()
             }
             Message::StartAuth => {

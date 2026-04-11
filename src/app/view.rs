@@ -506,16 +506,29 @@ impl App {
     }
 
     fn now_playing_view(&self) -> Element<'_, Message> {
-        let current_track = self.current.and_then(|idx| self.queue.get(idx));
-        let title = current_track
-            .and_then(|track| track.lastfm_title.as_deref().or(Some(track.title.as_str())))
-            .unwrap_or("No track selected");
-        let artist = current_track
-            .and_then(|track| track.lastfm_artist.as_deref().or(Some(track.artist.as_str())))
-            .unwrap_or("");
-        let album = current_track.map(|track| track.album.as_str()).unwrap_or("");
+        let (title, artist, album, artwork): (&str, &str, &str, Option<&Vec<u8>>) =
+            if let Some(ref t) = self.lastfm_track {
+                (
+                    t.name.as_str(),
+                    t.artist.text.as_str(),
+                    t.album.text.as_str(),
+                    self.lastfm_artwork.as_ref(),
+                )
+            } else {
+                let current_track = self.current.and_then(|idx| self.queue.get(idx));
+                (
+                    current_track
+                        .and_then(|t| t.lastfm_title.as_deref().or(Some(t.title.as_str())))
+                        .unwrap_or("No track selected"),
+                    current_track
+                        .and_then(|t| t.lastfm_artist.as_deref().or(Some(t.artist.as_str())))
+                        .unwrap_or(""),
+                    current_track.map(|t| t.album.as_str()).unwrap_or(""),
+                    current_track.and_then(|t| t.artwork.as_ref()),
+                )
+            };
 
-        let art: Element<Message> = match current_track.and_then(|track| track.artwork.as_ref()) {
+        let art: Element<Message> = match artwork {
             Some(bytes) => {
                 let handle = iced_image::Handle::from_bytes(bytes.clone());
                 iced_image::Image::new(handle).width(260).height(260).into()

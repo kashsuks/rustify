@@ -60,3 +60,28 @@ pub async fn get_now_playing(api_key: &str, username: &str) -> Option<Track> {
         None
     }
 }
+
+pub async fn get_track_info(api_key: &str, artist: &str, track: &str) -> Option<Vec<u8>> {
+    let url = format!(
+        "https://ws.audioscrobbler.com/2.0/?method=track.getInfo\
+         &api_key={}&artist={}&track={}&format=json",
+         api_key,
+         urlencoding::encode(artist),
+         urlencoding::encode(track),
+    );
+
+    let json: serde_json::Value = reqwest::get(&url).await.ok()?.json().await.ok()?;
+
+    let image_url = json["track"]["album"]["image"]
+        .as_array()?
+        .last()?["#text"]
+        .as_str()?
+        .to_string();
+
+    if image_url.is_empty() {
+        return None;
+    }
+
+    let bytes = reqwest::get(&image_url).await.ok()?.bytes().await.ok()?;
+    Some(bytes.to_vec())
+}
