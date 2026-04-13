@@ -176,6 +176,18 @@ impl App {
                     Message::AuthCompleted,
                 )
             }
+            Message::RecommendationReady(similar) => {
+                use crate::features::scrobbling::recommender;
+
+                let current_idx = self.current.unwrap_or(usize::MAX);
+                self.next_up = recommender::rank_candidates(
+                    &self.queue,
+                    &self.link_cache,
+                    &similar,
+                    current_idx,
+                );
+                Task::none()
+            }
             Message::ScrobbleTick => self.handle_scrobble_tick(),
             Message::OpenSettings => {
                 self.screen = crate::app::state::Screen::Settings;
@@ -418,6 +430,7 @@ impl App {
             lastfm_title: title.clone(),
             lastfm_artist: artist.clone(),
             skipped,
+            last_played: None,
         };
 
         self.link_cache.insert(key.clone(), link.clone());
@@ -446,7 +459,10 @@ impl App {
             return Task::none();
         }
 
-        let next = self.current.map(|idx| (idx + 1) % self.queue.len()).unwrap_or(0);
+        let next = self
+            .next_up
+            .filter(|&idx| idx != usize::MAX)
+            .unwrap_or_else(|| self.current.map(|idx| (idx + 1) % self.queue.len()).unwrap_or(0));
         self.start_playback(next)
     }
 
@@ -460,7 +476,24 @@ impl App {
     }
 
     fn start_playback(&mut self, idx: usize) -> Task<Message> {
+        let filename = self.queue[idx]
+            .path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_string();
+        let key = cache::cache_key(&filename, self.queue[idx].duration_secs);
+        if let Some(entry) = self.link_cache.get_mut(&key) {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+            entry.last_played = Some(now);
+            cache::save(&self.link_cache);
+        }
+
         self.current = Some(idx);
+        self.next_up = None;
         self.player.load(&self.queue[idx].path);
         self.player.play();
         self.playing = true;
@@ -492,9 +525,44 @@ impl App {
         }
 
         self.scrobble_timer += 1.0;
+        
+        // Check if current track has finished and auto-advance
+        if let Some(_) = self.current {
+            if self.player.is_done() && self.playing {
+                // Track has finished, advance to next
+                return self.play_next();
+            }
+        }
+
         let threshold = (self.current_duration_secs as f32 * 0.5)
             .min(240.0)
             .max(30.0);
+
+        let rec_threshold = self.current_duration_secs.saturating_sub(15) as f32;
+        if self.next_up.is_none()
+            && self.scrobble_timer >= rec_threshold
+            && self.current_duration_secs > 15
+        {
+            if let Some(idx) = self.current {
+                let api_key = self.lastfm_api_key.clone();
+                let artist = self.queue[idx]
+                    .lastfm_artist
+                    .clone()
+                    .unwrap_or_else(|| self.queue[idx].artist.clone());
+                let title = self.queue[idx]
+                    .lastfm_title
+                    .clone()
+                    .unwrap_or_else(|| self.queue[idx].title.clone());
+
+                // Leave next_up as None while waiting for recommendations
+                // It will be set to the actual recommendation when the task completes
+
+                return Task::perform(
+                    async move { lastfm::get_similar_tracks(&api_key, &artist, &title).await },
+                    Message::RecommendationReady,
+                );
+            }
+        }
 
         if self.scrobbled || self.scrobble_timer < threshold {
             return Task::none();

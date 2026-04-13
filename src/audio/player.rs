@@ -9,8 +9,7 @@ pub struct Player {
 
 impl Player {
     pub fn new() -> Self {
-        let (_stream, handle) = OutputStream::try_default()
-            .expect("No audio output device found");
+        let (_stream, handle) = OutputStream::try_default().expect("No audio output device found");
         let sink = Sink::try_new(&handle).unwrap();
         Self {
             _stream,
@@ -34,5 +33,9 @@ impl Player {
 
     pub fn pause(&self) {
         self.sink.pause();
+    }
+
+    pub fn is_done(&self) -> bool {
+        self.sink.empty()
     }
 }

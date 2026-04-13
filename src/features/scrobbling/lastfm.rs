@@ -85,3 +85,39 @@ pub async fn get_track_info(api_key: &str, artist: &str, track: &str) -> Option<
     let bytes = reqwest::get(&image_url).await.ok()?.bytes().await.ok()?;
     Some(bytes.to_vec())
 }
+
+#[derive(Debug, Clone)]
+pub struct SimilarTrack {
+    pub title: String,
+    pub artist: String,
+}
+
+pub async fn get_similar_tracks(api_key: &str, artist: &str, track: &str) -> Vec<SimilarTrack> {
+    let url = format!(
+        "https://ws.audioscrobbler.com/2.0/?method=track.getSimilar\
+         &api_key={}&artist={}&track={}&limit=20&format=json",
+         api_key,
+         urlencoding::encode(artist),
+         urlencoding::encode(track),
+    );
+
+    let Ok(resp) = reqwest::get(&url).await else {
+        return vec![];
+    };
+    let Ok(json) = resp.json::<serde_json::Value>().await else {
+        return vec![];
+    };
+
+    json["similartracks"]["track"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|t| {
+            Some(SimilarTrack {
+                title: t["name"].as_str()?.to_string(),
+                artist: t["artist"]["name"].as_str()?.to_string(),
+            })
+        })
+        .collect()
+}

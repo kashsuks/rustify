@@ -7,6 +7,8 @@ pub struct CachedLink {
     pub lastfm_title: String,
     pub lastfm_artist: String,
     pub skipped: bool,
+    #[serde(default)]
+    pub last_played: Option<u64>, // unix timestamp
 }
 
 fn cache_path() -> Option<PathBuf> {
