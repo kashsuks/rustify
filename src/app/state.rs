@@ -56,6 +56,7 @@ pub enum Message {
     SettingsApiSecretHoverChanged(bool),
     LibrarySearchChanged(String),
     SaveSettings,
+    DiscordArtworkReady(Option<String>),
 }
 
 
@@ -104,6 +105,7 @@ pub struct App {
     pub(crate) hover_show_lastfm_api_key: bool,
     pub(crate) hover_show_lastfm_api_secret: bool,
     pub(crate) library_search: String,
+    pub(crate) discord_artwork_url: Option<String>,
 }
 
 impl App {
@@ -148,6 +150,7 @@ impl App {
             scrobbled: false,
             match_state: MatchState::Idle,
             link_cache: cache::load(),
+            discord_artwork_url: None,
         }
     }
 }

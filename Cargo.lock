@@ -3896,6 +3896,7 @@ dependencies = [
 name = "rustify"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "dirs 5.0.1",
  "discord-rich-presence",
  "dotenvy",

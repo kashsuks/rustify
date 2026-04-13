@@ -242,6 +242,11 @@ impl App {
                 self.library_search = value;
                 Task::none()
             }
+            Message::DiscordArtworkReady(url) => {
+                self.discord_artwork_url = url;
+                self.update_discord();
+                Task::none()
+            }
         }
     }
 
@@ -500,6 +505,7 @@ impl App {
         self.scrobble_timer = 0.0;
         self.scrobbled = false;
         self.current_duration_secs = self.queue[idx].duration_secs;
+        self.discord_artwork_url = None;
 
         if let Some(session_key) = self.scrobbler.session_key.clone() {
             let api_key = self.scrobbler.api_key.clone();
@@ -516,6 +522,14 @@ impl App {
         }
 
         self.update_discord();
+
+        if let Some(bytes) = self.queue[idx].artwork.clone() {
+            return Task::perform(
+                async move { crate::features::discord_rpc::upload_artwork(bytes).await },
+                Message::DiscordArtworkReady,
+            );
+        }
+
         Task::none()
     }
 
@@ -525,13 +539,9 @@ impl App {
         }
 
         self.scrobble_timer += 1.0;
-        
-        // Check if current track has finished and auto-advance
-        if let Some(_) = self.current {
-            if self.player.is_done() && self.playing {
-                // Track has finished, advance to next
-                return self.play_next();
-            }
+
+        if self.current.is_some() && self.player.is_done() && self.playing {
+            return self.play_next();
         }
 
         let threshold = (self.current_duration_secs as f32 * 0.5)
@@ -553,9 +563,6 @@ impl App {
                     .lastfm_title
                     .clone()
                     .unwrap_or_else(|| self.queue[idx].title.clone());
-
-                // Leave next_up as None while waiting for recommendations
-                // It will be set to the actual recommendation when the task completes
 
                 return Task::perform(
                     async move { lastfm::get_similar_tracks(&api_key, &artist, &title).await },
