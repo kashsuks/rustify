@@ -455,6 +455,8 @@ impl App {
     }
 
     fn settings_view(&self) -> Element<'_, Message> {
+        use crate::app::state::AppTheme;
+
         let header = row![
             text("Settings").size(28),
             Space::with_width(Length::Fill),
@@ -463,13 +465,33 @@ impl App {
         .align_y(iced::Alignment::Center)
         .spacing(12);
 
-        let lastfm_section= column![
+        let theme_buttons = AppTheme::all().iter().map(|t| {
+            let is_active = self.app_theme == *t;
+            button(text(t.label()).size(13))
+                .on_press(Message::ThemeChanged(*t))
+                .style(move |theme, status| {
+                    if is_active {
+                        button::primary(theme, status)
+                    } else {
+                        button::secondary(theme, status)
+                    }
+                })
+                .into()
+        });
+
+        let theme_section = column![
+            text("Appearance").size(22),
+            text("Theme").size(18),
+            row(theme_buttons).spacing(8).wrap(),
+        ]
+        .spacing(12);
+
+        let lastfm_section = column![
             text("Connections").size(22),
             text("Last.fm").size(18),
-            text_input("Username",  &self.settings_lastfm_username)
+            text_input("Username", &self.settings_lastfm_username)
                 .on_input(Message::SettingsLastfmUsernameChanged)
                 .padding(10),
-
             mouse_area(
                 text_input("API Key", &self.settings_lastfm_api_key)
                     .on_input(Message::SettingsLastfmApiKeyChanged)
@@ -478,7 +500,6 @@ impl App {
             )
             .on_enter(Message::SettingsApiKeyHoverChanged(true))
             .on_exit(Message::SettingsApiKeyHoverChanged(false)),
-
             mouse_area(
                 text_input("API Secret", &self.settings_lastfm_api_secret)
                     .on_input(Message::SettingsLastfmApiSecretChanged)
@@ -496,9 +517,9 @@ impl App {
         .spacing(12);
 
         container(
-            column![header, horizontal_rule(1), lastfm_section]
+            column![header, horizontal_rule(1), theme_section, horizontal_rule(1), lastfm_section]
                 .spacing(24)
-                .padding(32)
+                .padding(32),
         )
         .width(Length::Fill)
         .height(Length::Fill)

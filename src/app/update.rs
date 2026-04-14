@@ -247,6 +247,10 @@ impl App {
                 self.update_discord();
                 Task::none()
             }
+            Message::ThemeChanged(theme) => {
+                self.app_theme = theme;
+                Task::none()
+            }
         }
     }
 

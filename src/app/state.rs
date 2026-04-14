@@ -57,6 +57,7 @@ pub enum Message {
     LibrarySearchChanged(String),
     SaveSettings,
     DiscordArtworkReady(Option<String>),
+    ThemeChanged(AppTheme),
 }
 
 
@@ -77,6 +78,15 @@ pub struct TrackMeta {
 pub enum Screen {
     Library,
     Settings,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AppTheme {
+    Nord,
+    CatppuccinMacchiato,
+    CatppuccinLatte,
+    TokyoNight,
+    AyuDark,
 }
 
 pub struct App {
@@ -106,6 +116,7 @@ pub struct App {
     pub(crate) hover_show_lastfm_api_secret: bool,
     pub(crate) library_search: String,
     pub(crate) discord_artwork_url: Option<String>,
+    pub(crate) app_theme: AppTheme,
 }
 
 impl App {
@@ -151,6 +162,40 @@ impl App {
             match_state: MatchState::Idle,
             link_cache: cache::load(),
             discord_artwork_url: None,
+            app_theme: AppTheme::Nord,
+        }
+    }
+}
+
+impl AppTheme {
+    pub fn label(&self) -> &'static str {
+        match self {
+            AppTheme::Nord => "Nord",
+            AppTheme::CatppuccinMacchiato => "Catppuccin Macchiato",
+            AppTheme::TokyoNight => "Tokyo Night",
+            AppTheme::CatppuccinLatte => "Catppuccin Latte",
+            AppTheme::AyuDark => "Ayu Dark",
+        }
+    }
+
+    pub fn all() -> &'static [AppTheme] {
+        &[
+            AppTheme::Nord,
+            AppTheme::CatppuccinMacchiato,
+            AppTheme::CatppuccinLatte,
+            AppTheme::TokyoNight,
+            AppTheme::AyuDark,
+        ]
+    }
+
+    pub fn to_iced_theme(&self) -> iced::Theme {
+        use crate::features::settings::theme;
+        match self {
+            AppTheme::Nord => iced::Theme::Nord,
+            AppTheme::CatppuccinMacchiato => theme::catppuccin_macchiato(),
+            AppTheme::CatppuccinLatte => theme::catppuccin_latte(),
+            AppTheme::TokyoNight => theme::tokyo_night(),
+            AppTheme::AyuDark => theme::ayu_dark(),
         }
     }
 }
