@@ -90,12 +90,16 @@ impl App {
                 )
             }
             Message::LastfmUpdated(track) => {
-                let changed = track.as_ref().map(|t| &t.name) != self.lastfm_track.as_ref().map(|t| &t.name);
+                let changed = track.as_ref().map(|t| (&t.name, &t.artist.text))
+                    != self.lastfm_track.as_ref().map(|t| (&t.name, &t.artist.text));
+
                 self.lastfm_track = track;
                 self.update_discord();
 
                 if changed {
                     self.lastfm_artwork = None;
+                    self.discord_artwork_url = None;
+
                     if let Some(ref t) = self.lastfm_track {
                         let api_key = self.lastfm_api_key.clone();
                         let artist = t.artist.text.clone();
@@ -110,7 +114,16 @@ impl App {
                 Task::none()
             }
             Message::LastfmArtworkFetched(artwork) => {
-                self.lastfm_artwork = artwork;
+                self.lastfm_artwork = artwork.clone();
+
+                // push the freshly fetched artwork to Discord RPC too 
+                if let Some(bytes) = artwork {
+                    return Task::perform(
+                        async move { crate::features::discord_rpc::upload_artwork(bytes).await },
+                        Message::DiscordArtworkReady,
+                    );
+                }
+
                 Task::none()
             }
             Message::StartAuth => {
@@ -255,7 +268,7 @@ impl App {
     }
 
     pub fn subscription(&self) -> iced::Subscription<Message> {
-        let lastfm = iced::time::every(std::time::Duration::from_secs(10))
+        let lastfm = iced::time::every(std::time::Duration::from_secs(5))
             .map(|_| Message::LastfmTick);
         let scrobble = iced::time::every(std::time::Duration::from_secs(1))
             .map(|_| Message::ScrobbleTick);
