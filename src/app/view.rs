@@ -316,19 +316,21 @@ impl App {
         })
         .on_press(Message::OpenSettings);
 
+        // The search bar fills available space but is capped so it never
+        // crowds the flanking buttons on wide windows.
         let search_bar = container(
             row![
-            iced::widget::Text::from(Icon::Search).size(16),
-            text_input("What do you want to play?", &self.library_search)
-                .on_input(Message::LibrarySearchChanged)
-                .padding([10, 0])
-                .size(16)
-                .style(|theme, status| {
-                    let mut style = text_input::default(theme, status);
-                    style.background = iced::Background::Color(Color::TRANSPARENT);
-                    style.border.width = 0.0;
-                    style
-                }),
+                iced::widget::Text::from(Icon::Search).size(16),
+                text_input("What do you want to play?", &self.library_search)
+                    .on_input(Message::LibrarySearchChanged)
+                    .padding([10, 0])
+                    .size(16)
+                    .style(|theme, status| {
+                        let mut style = text_input::default(theme, status);
+                        style.background = iced::Background::Color(Color::TRANSPARENT);
+                        style.border.width = 0.0;
+                        style
+                    }),
             ]
             .spacing(10)
             .align_y(iced::Alignment::Center)
@@ -336,6 +338,7 @@ impl App {
         .padding([0, 16])
         .height(44)
         .width(Length::Fill)
+        .max_width(560)
         .style(|_| container::Style {
             background: Some(iced::Background::Color(Color::from_rgb(0.16, 0.17, 0.24))),
             border: iced::Border {
@@ -345,10 +348,14 @@ impl App {
             ..Default::default()
         });
 
+        // Equal spacers on both sides of the search bar keep it centred and
+        // give natural breathing room away from the icon buttons.
         let toolbar = row![
             open_folder_btn,
             text("Library").size(22),
+            Space::with_width(Length::Fill),
             search_bar,
+            Space::with_width(Length::Fill),
             settings_btn,
         ]
         .padding([16, 24])

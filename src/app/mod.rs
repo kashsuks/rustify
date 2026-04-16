@@ -12,5 +12,6 @@ pub fn run() -> iced::Result {
         .subscription(App::subscription)
         .theme(|app: &App| app.app_theme.to_iced_theme())
         .font(LUCIDE_FONT_BYTES)
+        .window_size(iced::Size::new(1280.0, 800.0))
         .run_with(|| (App::new(), Task::none()))
 }
