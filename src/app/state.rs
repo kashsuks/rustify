@@ -162,7 +162,9 @@ impl App {
             match_state: MatchState::Idle,
             link_cache: cache::load(),
             discord_artwork_url: None,
-            app_theme: AppTheme::Nord,
+            app_theme: crate::features::settings::env::read_theme()
+                .and_then(|s| AppTheme::from_label(&s))
+                .unwrap_or(AppTheme::Nord),
         }
     }
 }
@@ -197,5 +199,16 @@ impl AppTheme {
             AppTheme::TokyoNight => theme::tokyo_night(),
             AppTheme::AyuDark => theme::ayu_dark(),
         }
+    }
+
+    pub fn from_label(s: &str) -> Option<AppTheme> {
+        AppTheme::all().iter().find(|t| t.label() == s).copied()
+    }
+}
+
+// needed to display the options properly
+impl std::fmt::Display for AppTheme {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.label())
     }
 }

@@ -1,7 +1,7 @@
 use crate::app::{App, MatchState, Message};
 use crate::features::scrobbling::matcher::SearchResult;
 use iced::widget::image as iced_image;
-use iced::widget::{button, column, container, horizontal_rule, mouse_area, row, scrollable, text, text_input, Space};
+use iced::widget::{button, column, container, horizontal_rule, mouse_area, pick_list, row, scrollable, text, text_input, Space};
 use iced::{Color, Element, Length, Padding};
 use lucide_icons::Icon;
 
@@ -465,24 +465,20 @@ impl App {
         .align_y(iced::Alignment::Center)
         .spacing(12);
 
-        let theme_buttons = AppTheme::all().iter().map(|t| {
-            let is_active = self.app_theme == *t;
-            button(text(t.label()).size(13))
-                .on_press(Message::ThemeChanged(*t))
-                .style(move |theme, status| {
-                    if is_active {
-                        button::primary(theme, status)
-                    } else {
-                        button::secondary(theme, status)
-                    }
-                })
-                .into()
-        });
-
         let theme_section = column![
             text("Appearance").size(22),
             text("Theme").size(18),
-            row(theme_buttons).spacing(8).wrap(),
+            pick_list(
+                AppTheme::all(),
+                Some(self.app_theme),
+                Message::ThemeChanged,
+            )
+            .style(|theme, status| {
+                let mut style = pick_list::default(theme, status);
+                style.border.radius = 10.0.into();
+                style
+            })
+            .padding([10, 14]),
         ]
         .spacing(12);
 

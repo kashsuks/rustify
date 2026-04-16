@@ -262,6 +262,9 @@ impl App {
             }
             Message::ThemeChanged(theme) => {
                 self.app_theme = theme;
+                if let Err(err) = crate::features::settings::env::write_theme(theme.label()) {
+                    eprintln!("Failed to save theme: {}", err);
+                }
                 Task::none()
             }
         }
