@@ -1,7 +1,7 @@
 use crate::app::{App, MatchState, Message};
 use crate::features::scrobbling::matcher::SearchResult;
 use iced::widget::image as iced_image;
-use iced::widget::{button, column, container, horizontal_rule, mouse_area, pick_list, row, scrollable, text, text_input, Space};
+use iced::widget::{button, column, container, horizontal_rule, pick_list, row, scrollable, text, text_input, Space};
 use iced::{Color, Element, Length, Padding};
 use lucide_icons::Icon;
 
@@ -489,33 +489,39 @@ impl App {
         ]
         .spacing(12);
 
+        let lastfm_connected = self.scrobbler.is_authenticated();
+
         let lastfm_section = column![
             text("Connections").size(22),
-            text("Last.fm").size(18),
-            text_input("Username", &self.settings_lastfm_username)
-                .on_input(Message::SettingsLastfmUsernameChanged)
-                .padding(10),
-            mouse_area(
-                text_input("API Key", &self.settings_lastfm_api_key)
-                    .on_input(Message::SettingsLastfmApiKeyChanged)
-                    .secure(!self.hover_show_lastfm_api_key)
-                    .padding(10)
-            )
-            .on_enter(Message::SettingsApiKeyHoverChanged(true))
-            .on_exit(Message::SettingsApiKeyHoverChanged(false)),
-            mouse_area(
-                text_input("API Secret", &self.settings_lastfm_api_secret)
-                    .on_input(Message::SettingsLastfmApiSecretChanged)
-                    .secure(!self.hover_show_lastfm_api_secret)
-                    .padding(10)
-            )
-            .on_enter(Message::SettingsApiSecretHoverChanged(true))
-            .on_exit(Message::SettingsApiSecretHoverChanged(false)),
             row![
+                text("Last.fm").size(18),
+                Space::with_width(Length::Fill),
                 button(" Connect Last.fm ").on_press(Message::StartAuth),
-                button(" Save ").on_press(Message::SaveSettings),
+                container(
+                    text(if lastfm_connected {
+                        "✓ Connected"
+                    } else {
+                        "Not Connected"
+                    })
+                    .size(13),
+                )
+                .padding([8, 12])
+                .style(move |_| container::Style {
+                    text_color: Some(Color::WHITE),
+                    background: Some(iced::Background::Color(if lastfm_connected {
+                        Color::from_rgb(0.18, 0.60, 0.30)
+                    } else {
+                        Color::from_rgb(0.55, 0.18, 0.18)
+                    })),
+                    border: iced::Border {
+                        radius: 10.0.into(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }),
             ]
             .spacing(12)
+            .align_y(iced::Alignment::Center)
         ]
         .spacing(12);
 
