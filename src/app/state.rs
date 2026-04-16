@@ -10,7 +10,10 @@ use std::path::PathBuf;
 #[derive(Debug, Clone)]
 pub enum MatchState {
     Idle,
-    Scanning { total: usize, done: usize },
+    Scanning {
+        total: usize,
+        done: usize,
+    },
     Reviewing {
         pending: Vec<usize>,
         search_query: String,
@@ -59,7 +62,6 @@ pub enum Message {
     DiscordArtworkReady(Option<String>),
     ThemeChanged(AppTheme),
 }
-
 
 pub struct TrackMeta {
     pub(crate) path: PathBuf,
@@ -131,7 +133,9 @@ impl App {
         let session_key = std::env::var("LASTFM_SESSION_KEY").ok();
 
         let scrobbler = match session_key {
-            Some(ref sk) => Scrobbler::new_with_session(api_key.clone(), api_secret.clone(), sk.clone()),
+            Some(ref sk) => {
+                Scrobbler::new_with_session(api_key.clone(), api_secret.clone(), sk.clone())
+            }
             None => Scrobbler::new(api_key.clone(), api_secret.clone()),
         };
 

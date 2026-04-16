@@ -42,11 +42,11 @@ pub fn ayu_dark() -> Theme {
     Theme::custom(
         "Ayu Dark".to_string(),
         Palette {
-            background: Color::from_rgb(0.055, 0.067, 0.086),
-            text: Color::from_rgb(0.773, 0.773, 0.718), 
-            primary: Color::from_rgb(0.929, 0.627, 0.212),
-            success: Color::from_rgb(0.471, 0.733, 0.420),
-            danger: Color::from_rgb(1.0, 0.420, 0.420),
+            background: Color::from_rgb(0.121, 0.141, 0.188),
+            text: Color::from_rgb(0.796, 0.800, 0.776), 
+            primary: Color::from_rgb(0.451, 0.816, 1.000),
+            success: Color::from_rgb(0.729, 0.902, 0.494),
+            danger: Color::from_rgb(0.949, 0.529, 0.475),
         },
     )
 }
