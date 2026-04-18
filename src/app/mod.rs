@@ -13,5 +13,14 @@ pub fn run() -> iced::Result {
         .theme(|app: &App| app.app_theme.to_iced_theme())
         .font(LUCIDE_FONT_BYTES)
         .window_size(iced::Size::new(1280.0, 800.0))
-        .run_with(|| (App::new(), Task::none()))
+        .run_with(|| {
+            let app = App::new();
+
+            let startup_task = match crate::features::settings::env::read_last_library_dir() {
+                Some(path) if path.is_dir() => Task::done(Message::FolderPicked(Some(path))),
+                _ => Task::none(),
+            };
+
+            (app, startup_task)
+        })
 }

@@ -79,6 +79,21 @@ pub fn write_theme(theme: &str) -> io::Result<()> {
     save_config(map)
 }
 
+pub fn read_last_library_dir() -> Option<PathBuf> {
+    let map = load_config();
+    map.get("last_library_dir").map(PathBuf::from)
+    
+}
+
+pub fn write_last_library_dir(path: &std::path::Path) -> io::Result<()> {
+    let mut map = load_config();
+    map.insert(
+        "last_library_dir".to_string(),
+        path.to_string_lossy().to_string(),
+    );
+    save_config(map)
+}
+
 pub fn write_lastfm_settings(api_key: &str, api_secret: &str, username: &str) -> io::Result<()> {
     dotenvy::dotenv().ok();
     let path = std::env::current_dir()

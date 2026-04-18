@@ -315,6 +315,10 @@ impl App {
     }
 
     fn handle_folder_picked(&mut self, path: std::path::PathBuf) -> Task<Message> {
+        if let Err(err) = crate::features::settings::env::write_last_library_dir(&path) {
+            eprintln!("Failed to save last library folder: {}", err);
+        }
+
         self.queue = library::scan_audio(&path);
         self.current = None;
         self.playing = false;
