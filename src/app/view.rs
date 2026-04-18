@@ -2,7 +2,8 @@ use crate::app::{App, MatchState, Message};
 use crate::features::scrobbling::matcher::SearchResult;
 use iced::widget::image as iced_image;
 use iced::widget::{
-    button, column, container, horizontal_rule, pick_list, row, scrollable, text, text_input, Space,
+    button, column, container, horizontal_rule, pick_list, row, scrollable, slider, text,
+    text_input, Space,
 };
 use iced::{Color, Element, Length, Padding};
 use lucide_icons::Icon;
@@ -689,6 +690,23 @@ impl App {
             left: 0.0,
         });
 
+        let volume_percent = (self.player.volume() * 100.0).round() as u8;
+        let volume = row![
+            text("Volume").size(12),
+            slider(0.0..=1.0, self.player.volume(), Message::VolumeChanged)
+                .step(0.01)
+                .width(Length::Fill),
+            text(format!("{}%", volume_percent)).size(12),
+        ]
+        .spacing(10)
+        .align_y(iced::Alignment::Center)
+        .padding(Padding {
+            top: 8.0,
+            right: 0.0,
+            bottom: 0.0,
+            left: 0.0,
+        });
+
         let lastfm_status: Element<Message> = if let Some(track) = &self.lastfm_track {
             column![
                 text("▸ Last.fm").size(11),
@@ -707,7 +725,7 @@ impl App {
             Space::with_height(0).into()
         };
 
-        let panel = column![art, info, controls, lastfm_status]
+        let panel = column![art, info, controls, volume, lastfm_status]
             .padding(24)
             .width(300)
             .height(Length::Fill)

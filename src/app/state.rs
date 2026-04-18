@@ -31,6 +31,7 @@ pub enum Message {
     SelectTrack(usize),
     Play,
     Pause,
+    VolumeChanged(f32),
     Next,
     Previous,
     LastfmTick,

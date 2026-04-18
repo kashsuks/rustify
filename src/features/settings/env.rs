@@ -82,7 +82,6 @@ pub fn write_theme(theme: &str) -> io::Result<()> {
 pub fn read_last_library_dir() -> Option<PathBuf> {
     let map = load_config();
     map.get("last_library_dir").map(PathBuf::from)
-    
 }
 
 pub fn write_last_library_dir(path: &std::path::Path) -> io::Result<()> {

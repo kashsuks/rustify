@@ -79,6 +79,10 @@ impl App {
                 self.update_discord();
                 Task::none()
             }
+            Message::VolumeChanged(volume) => {
+                self.player.set_volume(volume);
+                Task::none()
+            }
             Message::Next => self.play_next(),
             Message::Previous => self.play_previous(),
             Message::LastfmTick => {
