@@ -1,3 +1,7 @@
+/// This file is responsible for the differnt states
+/// Examples are metadata of songs that help derive its data
+/// Different states for controls like volume, play, pause, etc
+
 use crate::audio::player::Player;
 use crate::features::discord_rpc::DiscordRpc;
 use crate::features::scrobbling::cache::{self, CachedLink};
@@ -29,41 +33,84 @@ pub enum Message {
     OpenFolder,
     FolderPicked(Option<PathBuf>),
     SelectTrack(usize),
+
     Play,
     Pause,
     VolumeChanged(f32),
     Next,
     Previous,
+
     LastfmTick,
     LastfmUpdated(Option<LastfmTrack>),
     LastfmArtworkFetched(Option<Vec<u8>>),
+
     StartAuth,
     AuthTokenReceived(Option<String>),
     AuthPollTick,
     AuthCompleted(Option<String>),
     ScrobbleTick,
+
     RecommendationReady(Vec<crate::features::scrobbling::lastfm::SimilarTrack>),
+
     ScanTrack(usize),
     TrackScanned(usize, AutoMatchResult),
     SearchQueryChanged(String),
     SearchSubmitted,
     SearchResults(Vec<SearchResult>),
+
     LinkTrack(usize, SearchResult),
+
     SkipTrack(usize),
     PreviewToggle,
     OpenSettings,
     CloseSettings,
+
     SettingsLastfmUsernameChanged(String),
     SettingsLastfmApiKeyChanged(String),
     SettingsLastfmApiSecretChanged(String),
     SettingsApiKeyHoverChanged(bool),
     SettingsApiSecretHoverChanged(bool),
     LibrarySearchChanged(String),
+
     SaveSettings,
+
     DiscordArtworkReady(Option<String>),
     ThemeChanged(AppTheme),
 }
 
+/// Tracks all metadata of a given song.
+/// 
+/// # Fields
+/// 
+/// - `path` (`PathBuf`) - Absolute path of the song.
+/// - `title` (`String`) - Song title.
+/// - `artist` (`String`) - Artist of the song.
+/// - `album` (`String`) - Album that the song is from.
+/// - `duration` (`String`) - Duration of the song in hours:minutes.
+/// - `duration_secs` (`u64`) - Total duration in seconds (minutes x 60 + seconds).
+/// - `artwork` (`Option<Vec<u8>>`) - Song cover art.
+/// - `lastfm_title` (`Option<String>`) - Song name on Last.fm.
+/// - `lastfm_artist` (`Option<String>`) - Artist name on Last.fm.
+/// - `linked` (`bool`) - Whether it is an unrecognized song that is linked to last.fm.
+/// 
+/// # Examples
+/// 
+/// ```
+/// use crate::...;
+/// 
+/// let s = TrackMeta {
+///     path: value,
+///     title: value,
+///     artist: value,
+///     album: value,
+///     duration: value,
+///     duration_secs: value,
+///     artwork: value,
+///     lastfm_title: value,
+///     lastfm_artist: value,
+///     linked: value,
+/// };
+/// ```
 pub struct TrackMeta {
     pub(crate) path: PathBuf,
     pub(crate) title: String,
@@ -83,6 +130,30 @@ pub enum Screen {
     Settings,
 }
 
+/// This enum provides the different theme options for usage.
+/// 
+/// # Variants
+/// 
+/// - `Nord` - Nord theme colour scheme.
+/// - `CatppuccinMacchiato` - Catppuccin Macchiato colour scheme.
+/// - `CatppuccinLatte` - Catppuccin Latte colour scheme.
+/// - `TokyoNight` - Tokyo Night colour scheme.
+/// - `AyuDark` - Ayu Dark colour scheme.
+/// 
+/// # Examples
+/// 
+/// ```
+/// use crate::...;
+/// 
+/// let apptheme = AppTheme::Nord;
+/// match apptheme {
+///     AppTheme::Nord => handle_unit,
+///     AppTheme::CatppuccinMacchiato => handle_unit,
+///     AppTheme::CatppuccinLatte => handle_unit,
+///     AppTheme::TokyoNight => handle_unit,
+///     AppTheme::AyuDark => handle_unit,
+/// }
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppTheme {
     Nord,
@@ -128,6 +199,8 @@ impl App {
         let env_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(".env");
         dotenvy::from_path(env_path).ok();
 
+        // loaded from .env for now, change to hardcode when building and revert back
+        // DO NOT: commit when hardoded values
         let client_id = std::env::var("DISCORD_CLIENT_ID").unwrap_or_default();
         let lastfm_api_key = std::env::var("LASTFM_API_KEY").unwrap_or_default();
         let lastfm_username = std::env::var("LASTFM_USERNAME").unwrap_or_default();

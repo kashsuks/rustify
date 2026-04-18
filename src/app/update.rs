@@ -5,6 +5,7 @@ use iced::Task;
 
 impl App {
     pub fn update(&mut self, message: Message) -> Task<Message> {
+        // below are all the states that are needed to be updated periodically
         match message {
             Message::OpenFolder => Task::perform(library::pick_folder(), Message::FolderPicked),
             Message::FolderPicked(Some(path)) => self.handle_folder_picked(path),
@@ -150,6 +151,7 @@ impl App {
                     Message::AuthTokenReceived,
                 )
             }
+            // Case for when auth token and credentials exist
             Message::AuthTokenReceived(Some(token)) => {
                 let url = self.scrobbler.auth_url(&token);
 
@@ -168,6 +170,7 @@ impl App {
                     }
                 }
             }
+            // Case for when the auth token and credentials do NOT exist and require clarification
             Message::AuthTokenReceived(None) => {
                 self.lastfm_auth_status = Some(
                     "Could not get Last.fm auth token. Check LASTFM_API_KEY and LASTFM_API_SECRET in .env."
@@ -175,6 +178,8 @@ impl App {
                 );
                 Task::none()
             }
+            // Successful message that auth has been completed
+            // and proceeding steps
             Message::AuthCompleted(Some(session_key)) => {
                 if let Err(err) =
                     crate::features::settings::env::write_lastfm_session_key(&session_key)
@@ -427,6 +432,7 @@ impl App {
         self.start_review(pending)
     }
 
+    // sends the song to review in advance
     fn submit_review_search(&mut self) -> Task<Message> {
         if let MatchState::Reviewing {
             search_query,
@@ -488,6 +494,8 @@ impl App {
         self.start_review(pending)
     }
 
+    // needed for unrecognized songs in the folder that are
+    // not automatically linked and visible on last.fm
     fn store_link(&mut self, queue_idx: usize, title: String, artist: String, skipped: bool) {
         let filename = self.queue[queue_idx]
             .path
@@ -680,6 +688,24 @@ impl App {
         self.discord = discord;
     }
 
+    /// Fetches and handles all metadata for a given song in the index
+    /// of the folder.
+    /// 
+    /// # Arguments
+    /// 
+    /// - `idx` (`usize`) - Index of the song in the given folder.
+    /// 
+    /// # Returns
+    /// 
+    /// - `(String, String, String)` - All three values (artist, title, album) in string format.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use crate::...;
+    /// 
+    /// let _ = scrobble_metadata();
+    /// ```
     fn scrobble_metadata(&self, idx: usize) -> (String, String, String) {
         let track = &self.queue[idx];
         let artist = track
@@ -695,6 +721,23 @@ impl App {
         (artist, title, album)
     }
 
+    /// Periodic refreshing of a given song in the folder.
+    /// 
+    /// # Arguments
+    /// 
+    /// - `idx` (`usize`) - Index of the song in the directory.
+    /// 
+    /// # Returns
+    /// 
+    /// - `Task<Message>` - Related data to refresh the now playing song view.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use crate::...;
+    /// 
+    /// let _ = refresh_now_playing();
+    /// ```
     fn refresh_now_playing(&self, idx: usize) -> Task<Message> {
         let Some(session_key) = self.scrobbler.session_key.clone() else {
             return Task::none();
