@@ -404,7 +404,16 @@ impl App {
             )
             .spacing(0);
 
-            scrollable(rows).height(Length::Fill).into()
+            scrollable(rows)
+                .height(Length::Fill)
+                .direction(scrollable::Direction::Vertical(
+                    scrollable::Scrollbar::new()
+                        .width(12)
+                        .scroller_width(6)
+                        .margin(6),
+                ))
+                .style(move |theme, status| app_scrollbar_style(theme, status, self.app_theme))
+                .into()
         };
 
         column![
@@ -459,17 +468,32 @@ impl App {
             button.on_press(Message::SelectTrack(idx))
         };
 
+        let app_theme = self.app_theme;
+
         button
             .style(move |_, status| {
-                let bg = match (is_active, matches!(status, button::Status::Hovered)) {
-                    (_, true) if !is_reviewing => Color::from_rgba(1.0, 1.0, 1.0, 0.06),
-                    (true, _) => Color::from_rgba(1.0, 1.0, 1.0, 0.03),
+                let is_latte = matches!(app_theme, crate::app::AppTheme::CatppuccinLatte);
+                let bg = match (
+                    is_latte,
+                    is_active,
+                    matches!(status, button::Status::Hovered),
+                ) {
+                    (true, _, true) if !is_reviewing => Color::from_rgba(0.20, 0.22, 0.30, 0.08),
+                    (true, true, _) => Color::from_rgba(0.20, 0.22, 0.30, 0.06),
+                    (false, _, true) if !is_reviewing => Color::from_rgba(1.0, 1.0, 1.0, 0.06),
+                    (false, true, _) => Color::from_rgba(1.0, 1.0, 1.0, 0.03),
                     _ => Color::TRANSPARENT,
                 };
 
                 button::Style {
                     background: Some(iced::Background::Color(bg)),
-                    text_color: if is_active {
+                    text_color: if is_latte {
+                        if is_active {
+                            Color::from_rgb(0.12, 0.14, 0.20)
+                        } else {
+                            Color::from_rgb(0.30, 0.31, 0.41)
+                        }
+                    } else if is_active {
                         Color::WHITE
                     } else {
                         Color::from_rgba(1.0, 1.0, 1.0, 0.85)
@@ -689,7 +713,7 @@ impl App {
             bottom: 0.0,
             left: 0.0,
         });
-        
+
         let volume_icon = if self.player.volume() <= 0.0 {
             Icon::VolumeX // if volume is set to 0/muted
         } else {
@@ -744,4 +768,58 @@ impl App {
             })
             .into()
     }
+}
+
+fn app_scrollbar_style(
+    theme: &iced::Theme,
+    status: scrollable::Status,
+    app_theme: crate::app::AppTheme,
+) -> scrollable::Style {
+    let mut style = scrollable::default(theme, status);
+
+    let (base_thumb, hover_thumb, drag_thumb, rail) = match app_theme {
+        crate::app::AppTheme::Nord => (
+            Color::from_rgba(0.53, 0.75, 0.82, 0.35),
+            Color::from_rgba(0.53, 0.75, 0.82, 0.65),
+            Color::from_rgba(0.53, 0.75, 0.82, 0.95),
+            Color::from_rgba(0.93, 0.96, 0.99, 0.04),
+        ),
+        crate::app::AppTheme::CatppuccinMacchiato => (
+            Color::from_rgba(0.54, 0.63, 0.94, 0.35),
+            Color::from_rgba(0.54, 0.63, 0.94, 0.65),
+            Color::from_rgba(0.54, 0.63, 0.94, 0.95),
+            Color::from_rgba(0.94, 0.95, 1.0, 0.04),
+        ),
+        crate::app::AppTheme::CatppuccinLatte => (
+            Color::from_rgba(0.45, 0.53, 0.75, 0.45),
+            Color::from_rgba(0.45, 0.53, 0.75, 0.75),
+            Color::from_rgba(0.45, 0.53, 0.75, 0.95),
+            Color::from_rgba(0.20, 0.22, 0.30, 0.08),
+        ),
+        crate::app::AppTheme::TokyoNight => (
+            Color::from_rgba(0.48, 0.60, 0.98, 0.35),
+            Color::from_rgba(0.48, 0.60, 0.98, 0.65),
+            Color::from_rgba(0.48, 0.60, 0.98, 0.95),
+            Color::from_rgba(0.75, 0.80, 1.0, 0.04),
+        ),
+        crate::app::AppTheme::AyuDark => (
+            Color::from_rgba(0.45, 0.82, 1.0, 0.35),
+            Color::from_rgba(0.45, 0.82, 1.0, 0.65),
+            Color::from_rgba(0.45, 0.82, 1.0, 0.95),
+            Color::from_rgba(0.75, 0.90, 1.0, 0.04),
+        ),
+    };
+
+    let thumb = match status {
+        scrollable::Status::Hovered { .. } => hover_thumb,
+        scrollable::Status::Dragged { .. } => drag_thumb,
+        _ => base_thumb,
+    };
+
+    style.vertical_rail.background = Some(iced::Background::Color(rail));
+    style.vertical_rail.border.radius = 999.0.into();
+    style.vertical_rail.scroller.color = thumb;
+    style.vertical_rail.scroller.border.radius = 999.0.into();
+
+    style
 }
