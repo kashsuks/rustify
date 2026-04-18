@@ -412,7 +412,7 @@ impl App {
                         .scroller_width(6)
                         .margin(6),
                 ))
-                .style(move |theme, status| app_scrollbar_style(theme, status, self.app_theme))
+                .style(app_scrollbar_style)
                 .into()
         };
 
@@ -468,35 +468,31 @@ impl App {
             button.on_press(Message::SelectTrack(idx))
         };
 
-        let app_theme = self.app_theme;
-
         button
-            .style(move |_, status| {
-                let is_latte = matches!(app_theme, crate::app::AppTheme::CatppuccinLatte);
-                let bg = match (
-                    is_latte,
-                    is_active,
-                    matches!(status, button::Status::Hovered),
-                ) {
-                    (true, _, true) if !is_reviewing => Color::from_rgba(0.20, 0.22, 0.30, 0.08),
-                    (true, true, _) => Color::from_rgba(0.20, 0.22, 0.30, 0.06),
-                    (false, _, true) if !is_reviewing => Color::from_rgba(1.0, 1.0, 1.0, 0.06),
-                    (false, true, _) => Color::from_rgba(1.0, 1.0, 1.0, 0.03),
+            .style(move |theme, status| {
+                let palette = theme.palette();
+                let bg = match (is_active, matches!(status, button::Status::Hovered)) {
+                    (_, true) if !is_reviewing => Color::from_rgba(
+                        palette.text.r,
+                        palette.text.g,
+                        palette.text.b,
+                        0.06,
+                    ),
+                    (true, _) => Color::from_rgba(
+                        palette.text.r,
+                        palette.text.g,
+                        palette.text.b,
+                        0.03,
+                    ),
                     _ => Color::TRANSPARENT,
                 };
 
                 button::Style {
                     background: Some(iced::Background::Color(bg)),
-                    text_color: if is_latte {
-                        if is_active {
-                            Color::from_rgb(0.12, 0.14, 0.20)
-                        } else {
-                            Color::from_rgb(0.30, 0.31, 0.41)
-                        }
-                    } else if is_active {
-                        Color::WHITE
+                    text_color: if is_active {
+                        palette.text
                     } else {
-                        Color::from_rgba(1.0, 1.0, 1.0, 0.85)
+                        Color::from_rgba(palette.text.r, palette.text.g, palette.text.b, 0.85)
                     },
                     border: iced::Border::default(),
                     shadow: iced::Shadow::default(),
@@ -506,7 +502,7 @@ impl App {
     }
 
     fn settings_view(&self) -> Element<'_, Message> {
-        use crate::app::state::AppTheme;
+        use crate::app::AppTheme;
 
         let header = row![
             button(iced::widget::Text::from(Icon::ArrowLeft).size(22))
@@ -773,42 +769,15 @@ impl App {
 fn app_scrollbar_style(
     theme: &iced::Theme,
     status: scrollable::Status,
-    app_theme: crate::app::AppTheme,
 ) -> scrollable::Style {
     let mut style = scrollable::default(theme, status);
-
-    let (base_thumb, hover_thumb, drag_thumb, rail) = match app_theme {
-        crate::app::AppTheme::Nord => (
-            Color::from_rgba(0.53, 0.75, 0.82, 0.35),
-            Color::from_rgba(0.53, 0.75, 0.82, 0.65),
-            Color::from_rgba(0.53, 0.75, 0.82, 0.95),
-            Color::from_rgba(0.93, 0.96, 0.99, 0.04),
-        ),
-        crate::app::AppTheme::CatppuccinMacchiato => (
-            Color::from_rgba(0.54, 0.63, 0.94, 0.35),
-            Color::from_rgba(0.54, 0.63, 0.94, 0.65),
-            Color::from_rgba(0.54, 0.63, 0.94, 0.95),
-            Color::from_rgba(0.94, 0.95, 1.0, 0.04),
-        ),
-        crate::app::AppTheme::CatppuccinLatte => (
-            Color::from_rgba(0.45, 0.53, 0.75, 0.45),
-            Color::from_rgba(0.45, 0.53, 0.75, 0.75),
-            Color::from_rgba(0.45, 0.53, 0.75, 0.95),
-            Color::from_rgba(0.20, 0.22, 0.30, 0.08),
-        ),
-        crate::app::AppTheme::TokyoNight => (
-            Color::from_rgba(0.48, 0.60, 0.98, 0.35),
-            Color::from_rgba(0.48, 0.60, 0.98, 0.65),
-            Color::from_rgba(0.48, 0.60, 0.98, 0.95),
-            Color::from_rgba(0.75, 0.80, 1.0, 0.04),
-        ),
-        crate::app::AppTheme::AyuDark => (
-            Color::from_rgba(0.45, 0.82, 1.0, 0.35),
-            Color::from_rgba(0.45, 0.82, 1.0, 0.65),
-            Color::from_rgba(0.45, 0.82, 1.0, 0.95),
-            Color::from_rgba(0.75, 0.90, 1.0, 0.04),
-        ),
-    };
+    let palette = theme.palette();
+    let primary = palette.primary;
+    let text = palette.text;
+    let base_thumb = Color::from_rgba(primary.r, primary.g, primary.b, 0.35);
+    let hover_thumb = Color::from_rgba(primary.r, primary.g, primary.b, 0.65);
+    let drag_thumb = Color::from_rgba(primary.r, primary.g, primary.b, 0.95);
+    let rail = Color::from_rgba(text.r, text.g, text.b, 0.04);
 
     let thumb = match status {
         scrollable::Status::Hovered { .. } => hover_thumb,

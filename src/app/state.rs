@@ -130,37 +130,16 @@ pub enum Screen {
     Settings,
 }
 
-/// This enum provides the different theme options for usage.
-/// 
-/// # Variants
-/// 
-/// - `Nord` - Nord theme colour scheme.
-/// - `CatppuccinMacchiato` - Catppuccin Macchiato colour scheme.
-/// - `CatppuccinLatte` - Catppuccin Latte colour scheme.
-/// - `TokyoNight` - Tokyo Night colour scheme.
-/// - `AyuDark` - Ayu Dark colour scheme.
-/// 
-/// # Examples
-/// 
-/// ```
-/// use crate::...;
-/// 
-/// let apptheme = AppTheme::Nord;
-/// match apptheme {
-///     AppTheme::Nord => handle_unit,
-///     AppTheme::CatppuccinMacchiato => handle_unit,
-///     AppTheme::CatppuccinLatte => handle_unit,
-///     AppTheme::TokyoNight => handle_unit,
-///     AppTheme::AyuDark => handle_unit,
-/// }
-/// ```
+/// This enum provides the built-in iced theme options used by the app.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppTheme {
     Nord,
+    Dark,
+    Dracula,
+    GruvboxDark,
     CatppuccinMacchiato,
-    CatppuccinLatte,
     TokyoNight,
-    AyuDark,
+    Oxocarbon,
 }
 
 pub struct App {
@@ -254,31 +233,36 @@ impl AppTheme {
     pub fn label(&self) -> &'static str {
         match self {
             AppTheme::Nord => "Nord",
+            AppTheme::Dark => "Dark",
+            AppTheme::Dracula => "Dracula",
+            AppTheme::GruvboxDark => "Gruvbox Dark",
             AppTheme::CatppuccinMacchiato => "Catppuccin Macchiato",
             AppTheme::TokyoNight => "Tokyo Night",
-            AppTheme::CatppuccinLatte => "Catppuccin Latte",
-            AppTheme::AyuDark => "Ayu Dark",
+            AppTheme::Oxocarbon => "Oxocarbon",
         }
     }
 
     pub fn all() -> &'static [AppTheme] {
         &[
             AppTheme::Nord,
+            AppTheme::Dark,
+            AppTheme::Dracula,
+            AppTheme::GruvboxDark,
             AppTheme::CatppuccinMacchiato,
-            AppTheme::CatppuccinLatte,
             AppTheme::TokyoNight,
-            AppTheme::AyuDark,
+            AppTheme::Oxocarbon,
         ]
     }
 
     pub fn to_iced_theme(&self) -> iced::Theme {
-        use crate::features::settings::theme;
         match self {
             AppTheme::Nord => iced::Theme::Nord,
-            AppTheme::CatppuccinMacchiato => theme::catppuccin_macchiato(),
-            AppTheme::CatppuccinLatte => theme::catppuccin_latte(),
-            AppTheme::TokyoNight => theme::tokyo_night(),
-            AppTheme::AyuDark => theme::ayu_dark(),
+            AppTheme::Dark => iced::Theme::Dark,
+            AppTheme::Dracula => iced::Theme::Dracula,
+            AppTheme::GruvboxDark => iced::Theme::GruvboxDark,
+            AppTheme::CatppuccinMacchiato => iced::Theme::CatppuccinMacchiato,
+            AppTheme::TokyoNight => iced::Theme::TokyoNight,
+            AppTheme::Oxocarbon => iced::Theme::Oxocarbon,
         }
     }
 
