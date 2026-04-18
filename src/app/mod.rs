@@ -4,7 +4,7 @@ mod view;
 
 pub use state::{App, AppTheme, MatchState, Message, TrackMeta};
 
-use iced::{Task};
+use iced::Task;
 use lucide_icons::LUCIDE_FONT_BYTES;
 
 pub fn run() -> iced::Result {

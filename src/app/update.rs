@@ -91,7 +91,10 @@ impl App {
             }
             Message::LastfmUpdated(track) => {
                 let changed = track.as_ref().map(|t| (&t.name, &t.artist.text))
-                    != self.lastfm_track.as_ref().map(|t| (&t.name, &t.artist.text));
+                    != self
+                        .lastfm_track
+                        .as_ref()
+                        .map(|t| (&t.name, &t.artist.text));
 
                 self.lastfm_track = track;
                 self.update_discord();
@@ -116,7 +119,7 @@ impl App {
             Message::LastfmArtworkFetched(artwork) => {
                 self.lastfm_artwork = artwork.clone();
 
-                // push the freshly fetched artwork to Discord RPC too 
+                // push the freshly fetched artwork to Discord RPC too
                 if let Some(bytes) = artwork {
                     return Task::perform(
                         async move { crate::features::discord_rpc::upload_artwork(bytes).await },
@@ -125,15 +128,14 @@ impl App {
                 }
 
                 Task::none()
-            } 
+            }
             Message::StartAuth => {
                 let key = self.scrobbler.api_key.clone();
                 let secret = self.scrobbler.api_secret.clone();
 
                 if key.trim().is_empty() || secret.trim().is_empty() {
-                    self.lastfm_auth_status = Some(
-                        "Missing Last.fm API key or secret in .env".to_string(),
-                    );
+                    self.lastfm_auth_status =
+                        Some("Missing Last.fm API key or secret in .env".to_string());
                     return Task::none();
                 }
 
@@ -149,15 +151,15 @@ impl App {
 
                 match open::that(&url) {
                     Ok(_) => {
-                        self.lastfm_auth_status =
-                            Some("Approve Rustify in your browser to finish connecting.".to_string());
+                        self.lastfm_auth_status = Some(
+                            "Approve Rustify in your browser to finish connecting.".to_string(),
+                        );
                         self.auth_token = Some(token);
                         self.auth_poll_attempts_left = 15;
                         Task::done(Message::AuthPollTick)
                     }
                     Err(err) => {
-                        self.lastfm_auth_status =
-                            Some(format!("Could not open browser: {}", err));
+                        self.lastfm_auth_status = Some(format!("Could not open browser: {}", err));
                         Task::none()
                     }
                 }
@@ -170,7 +172,9 @@ impl App {
                 Task::none()
             }
             Message::AuthCompleted(Some(session_key)) => {
-                if let Err(err) = crate::features::settings::env::write_lastfm_session_key(&session_key) {
+                if let Err(err) =
+                    crate::features::settings::env::write_lastfm_session_key(&session_key)
+                {
                     eprintln!("Failed to persist Last.fm session key: {}", err);
                 }
 
@@ -183,14 +187,12 @@ impl App {
             }
             Message::AuthCompleted(None) => {
                 if self.auth_poll_attempts_left > 0 && self.auth_token.is_some() {
-                    self.lastfm_auth_status =
-                        Some("Waiting for Last.fm approval...".to_string());
+                    self.lastfm_auth_status = Some("Waiting for Last.fm approval...".to_string());
                     Task::done(Message::AuthPollTick)
                 } else {
                     self.auth_token = None;
-                    self.lastfm_auth_status = Some(
-                        "Last.fm authorization timed out or was not approved.".to_string(),
-                    );
+                    self.lastfm_auth_status =
+                        Some("Last.fm authorization timed out or was not approved.".to_string());
                     Task::none()
                 }
             }
@@ -304,10 +306,10 @@ impl App {
     }
 
     pub fn subscription(&self) -> iced::Subscription<Message> {
-        let lastfm = iced::time::every(std::time::Duration::from_secs(5))
-            .map(|_| Message::LastfmTick);
-        let scrobble = iced::time::every(std::time::Duration::from_secs(1))
-            .map(|_| Message::ScrobbleTick);
+        let lastfm =
+            iced::time::every(std::time::Duration::from_secs(5)).map(|_| Message::LastfmTick);
+        let scrobble =
+            iced::time::every(std::time::Duration::from_secs(1)).map(|_| Message::ScrobbleTick);
 
         iced::Subscription::batch(vec![lastfm, scrobble])
     }
@@ -398,7 +400,9 @@ impl App {
             .queue
             .iter()
             .enumerate()
-            .find(|(next_idx, track)| *next_idx > idx && track.lastfm_title.is_none() && track.linked)
+            .find(|(next_idx, track)| {
+                *next_idx > idx && track.lastfm_title.is_none() && track.linked
+            })
             .map(|(next_idx, _)| next_idx)
         {
             return Task::done(Message::ScanTrack(next_idx));
@@ -520,7 +524,11 @@ impl App {
         let next = self
             .next_up
             .filter(|&idx| idx != usize::MAX)
-            .unwrap_or_else(|| self.current.map(|idx| (idx + 1) % self.queue.len()).unwrap_or(0));
+            .unwrap_or_else(|| {
+                self.current
+                    .map(|idx| (idx + 1) % self.queue.len())
+                    .unwrap_or(0)
+            });
         self.start_playback(next)
     }
 

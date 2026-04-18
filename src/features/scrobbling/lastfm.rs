@@ -65,16 +65,14 @@ pub async fn get_track_info(api_key: &str, artist: &str, track: &str) -> Option<
     let url = format!(
         "https://ws.audioscrobbler.com/2.0/?method=track.getInfo\
          &api_key={}&artist={}&track={}&format=json",
-         api_key,
-         urlencoding::encode(artist),
-         urlencoding::encode(track),
+        api_key,
+        urlencoding::encode(artist),
+        urlencoding::encode(track),
     );
 
     let json: serde_json::Value = reqwest::get(&url).await.ok()?.json().await.ok()?;
 
-    let image_url = json["track"]["album"]["image"]
-        .as_array()?
-        .last()?["#text"]
+    let image_url = json["track"]["album"]["image"].as_array()?.last()?["#text"]
         .as_str()?
         .to_string();
 
@@ -96,9 +94,9 @@ pub async fn get_similar_tracks(api_key: &str, artist: &str, track: &str) -> Vec
     let url = format!(
         "https://ws.audioscrobbler.com/2.0/?method=track.getSimilar\
          &api_key={}&artist={}&track={}&limit=20&format=json",
-         api_key,
-         urlencoding::encode(artist),
-         urlencoding::encode(track),
+        api_key,
+        urlencoding::encode(artist),
+        urlencoding::encode(track),
     );
 
     let Ok(resp) = reqwest::get(&url).await else {

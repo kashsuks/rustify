@@ -38,7 +38,9 @@ pub fn scan_audio(dir: &Path) -> Vec<TrackMeta> {
             let mut artwork = None;
 
             if let Ok(tagged_file) = Probe::open(&path).and_then(|probe| probe.read()) {
-                let tag = tagged_file.primary_tag().or_else(|| tagged_file.first_tag());
+                let tag = tagged_file
+                    .primary_tag()
+                    .or_else(|| tagged_file.first_tag());
                 if let Some(tag) = tag {
                     if let Some(tag_title) = tag.title() {
                         title = tag_title.to_string();

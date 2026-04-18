@@ -1,7 +1,9 @@
 use crate::app::{App, MatchState, Message};
 use crate::features::scrobbling::matcher::SearchResult;
 use iced::widget::image as iced_image;
-use iced::widget::{button, column, container, horizontal_rule, pick_list, row, scrollable, text, text_input, Space};
+use iced::widget::{
+    button, column, container, horizontal_rule, pick_list, row, scrollable, text, text_input, Space,
+};
 use iced::{Color, Element, Length, Padding};
 use lucide_icons::Icon;
 
@@ -12,20 +14,20 @@ impl App {
                 let is_reviewing = matches!(self.match_state, MatchState::Reviewing { .. });
                 let main_ui = self.main_view(is_reviewing);
 
-                if let MatchState::Reviewing { 
-                    pending, 
-                    search_query, 
-                    search_results, 
-                    search_loading, 
-                    preview_playing 
+                if let MatchState::Reviewing {
+                    pending,
+                    search_query,
+                    search_results,
+                    search_loading,
+                    preview_playing,
                 } = &self.match_state
                 {
                     let modal = self.review_modal(
-                        pending, 
-                        search_query, 
-                        search_results, 
-                        *search_loading, 
-                        *preview_playing
+                        pending,
+                        search_query,
+                        search_results,
+                        *search_loading,
+                        *preview_playing,
                     );
 
                     return iced::widget::stack([main_ui, modal])
@@ -139,7 +141,8 @@ impl App {
             text(&track.artist).size(13),
             text(&track.duration).size(12),
             text(
-                track.path
+                track
+                    .path
                     .file_name()
                     .and_then(|name| name.to_str())
                     .unwrap_or("")
@@ -260,17 +263,21 @@ impl App {
             .spacing(16)
             .align_y(iced::Alignment::Start);
 
-        let modal_box = container(column![header, horizontal_rule(1), body].spacing(16).padding(32))
-            .width(700)
-            .style(|_| container::Style {
-                background: Some(iced::Background::Color(Color::from_rgb(0.1, 0.1, 0.14))),
-                border: iced::Border {
-                    radius: 12.0.into(),
-                    width: 1.0,
-                    color: Color::from_rgba(1.0, 1.0, 1.0, 0.1),
-                },
-                ..Default::default()
-            });
+        let modal_box = container(
+            column![header, horizontal_rule(1), body]
+                .spacing(16)
+                .padding(32),
+        )
+        .width(700)
+        .style(|_| container::Style {
+            background: Some(iced::Background::Color(Color::from_rgb(0.1, 0.1, 0.14))),
+            border: iced::Border {
+                radius: 12.0.into(),
+                width: 1.0,
+                color: Color::from_rgba(1.0, 1.0, 1.0, 0.1),
+            },
+            ..Default::default()
+        });
 
         let overlay = container(
             container(modal_box)
@@ -280,7 +287,9 @@ impl App {
         .width(Length::Fill)
         .height(Length::Fill)
         .style(|_| container::Style {
-            background: Some(iced::Background::Color(Color::from_rgba(0.0, 0.0, 0.0, 0.75))),
+            background: Some(iced::Background::Color(Color::from_rgba(
+                0.0, 0.0, 0.0, 0.75,
+            ))),
             ..Default::default()
         });
 
@@ -291,7 +300,7 @@ impl App {
         let open_folder_btn = button(
             container(iced::widget::Text::from(Icon::FolderOpen).size(18))
                 .center_x(Length::Fill)
-                .center_y(Length::Fill)
+                .center_y(Length::Fill),
         )
         .width(44)
         .height(44)
@@ -305,7 +314,7 @@ impl App {
         let settings_btn = button(
             container(iced::widget::Text::from(Icon::Settings).size(18))
                 .center_x(Length::Fill)
-                .center_y(Length::Fill)
+                .center_y(Length::Fill),
         )
         .width(44)
         .height(44)
@@ -333,7 +342,7 @@ impl App {
                     }),
             ]
             .spacing(10)
-            .align_y(iced::Alignment::Center)
+            .align_y(iced::Alignment::Center),
         )
         .padding([0, 16])
         .height(44)
@@ -390,20 +399,30 @@ impl App {
                             || track.artist.to_lowercase().contains(&query)
                             || track.album.to_lowercase().contains(&query)
                     })
-                    .map(|(idx, track)| self.track_row(idx, track))
+                    .map(|(idx, track)| self.track_row(idx, track)),
             )
             .spacing(0);
 
             scrollable(rows).height(Length::Fill).into()
         };
 
-        column![toolbar, horizontal_rule(1), headers, horizontal_rule(1), body]
-            .height(Length::Fill)
-            .width(Length::Fill)
-            .into()
+        column![
+            toolbar,
+            horizontal_rule(1),
+            headers,
+            horizontal_rule(1),
+            body
+        ]
+        .height(Length::Fill)
+        .width(Length::Fill)
+        .into()
     }
 
-    fn track_row<'a>(&'a self, idx: usize, track: &'a crate::app::TrackMeta) -> Element<'a, Message> {
+    fn track_row<'a>(
+        &'a self,
+        idx: usize,
+        track: &'a crate::app::TrackMeta,
+    ) -> Element<'a, Message> {
         let is_active = self.current == Some(idx);
         let is_reviewing = matches!(self.match_state, MatchState::Reviewing { .. });
 
@@ -465,9 +484,17 @@ impl App {
         use crate::app::state::AppTheme;
 
         let header = row![
+            button(iced::widget::Text::from(Icon::ArrowLeft).size(22))
+                .width(44)
+                .height(44)
+                .style(|theme, status| {
+                    let mut style = button::secondary(theme, status);
+                    style.border.radius = 14.0.into();
+                    style
+                })
+                .on_press(Message::CloseSettings),
             text("Settings").size(28),
             Space::with_width(Length::Fill),
-            button(" Back ").on_press(Message::CloseSettings),
         ]
         .align_y(iced::Alignment::Center)
         .spacing(12);
@@ -475,17 +502,13 @@ impl App {
         let theme_section = column![
             text("Appearance").size(22),
             text("Theme").size(18),
-            pick_list(
-                AppTheme::all(),
-                Some(self.app_theme),
-                Message::ThemeChanged,
-            )
-            .style(|theme, status| {
-                let mut style = pick_list::default(theme, status);
-                style.border.radius = 10.0.into();
-                style
-            })
-            .padding([10, 14]),
+            pick_list(AppTheme::all(), Some(self.app_theme), Message::ThemeChanged,)
+                .style(|theme, status| {
+                    let mut style = pick_list::default(theme, status);
+                    style.border.radius = 10.0.into();
+                    style
+                })
+                .padding([10, 14]),
         ]
         .spacing(12);
 
@@ -501,7 +524,14 @@ impl App {
             row![
                 text("Last.fm").size(18),
                 Space::with_width(Length::Fill),
-                button(" Connect Last.fm ").on_press(Message::StartAuth),
+                button(" Connect Last.fm ")
+                    .padding([10, 18])
+                    .style(|theme, status| {
+                        let mut style = button::primary(theme, status);
+                        style.border.radius = 16.0.into();
+                        style
+                    })
+                    .on_press(Message::StartAuth),
                 container(
                     text(if lastfm_connected {
                         "✓ Connected"
@@ -532,9 +562,15 @@ impl App {
         .spacing(12);
 
         container(
-            column![header, horizontal_rule(1), theme_section, horizontal_rule(1), lastfm_section]
-                .spacing(24)
-                .padding(32),
+            column![
+                header,
+                horizontal_rule(1),
+                theme_section,
+                horizontal_rule(1),
+                lastfm_section
+            ]
+            .spacing(24)
+            .padding(32),
         )
         .width(Length::Fill)
         .height(Length::Fill)
@@ -617,7 +653,7 @@ impl App {
                     style.border.radius = 14.0.into();
                     style
                 })
-            .on_press(Message::Pause)
+                .on_press(Message::Pause)
         } else {
             button(iced::widget::Text::from(Icon::CirclePlay).size(22))
                 .width(48)

@@ -48,8 +48,14 @@ impl DiscordRpc {
         } else if app.playing {
             if let Some(track) = app.current.and_then(|i| app.queue.get(i)) {
                 (
-                    track.lastfm_title.clone().unwrap_or_else(|| track.title.clone()),
-                    track.lastfm_artist.clone().unwrap_or_else(|| track.artist.clone()),
+                    track
+                        .lastfm_title
+                        .clone()
+                        .unwrap_or_else(|| track.title.clone()),
+                    track
+                        .lastfm_artist
+                        .clone()
+                        .unwrap_or_else(|| track.artist.clone()),
                     track.album.clone(),
                     track.duration_secs,
                 )

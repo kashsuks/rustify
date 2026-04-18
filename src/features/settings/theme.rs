@@ -1,5 +1,5 @@
-use iced::{Color, Theme};
 use iced::theme::Palette;
+use iced::{Color, Theme};
 
 pub fn catppuccin_macchiato() -> Theme {
     Theme::custom(
@@ -31,9 +31,11 @@ pub fn tokyo_night() -> Theme {
     Theme::custom(
         "Tokyo Night".to_string(),
         Palette {
-            background: Color::from_rgb(0.063, 0.067, 0.098),           
+            background: Color::from_rgb(0.063, 0.067, 0.098),
             text: Color::from_rgb(0.694, 0.722, 0.996),
-            primary: Color::from_rgb(0.494, 0.596, 0.918),             success: Color::from_rgb(0.588, 0.741, 0.475),             danger: Color::from_rgb(0.957, 0.529, 0.624),
+            primary: Color::from_rgb(0.494, 0.596, 0.918),
+            success: Color::from_rgb(0.588, 0.741, 0.475),
+            danger: Color::from_rgb(0.957, 0.529, 0.624),
         },
     )
 }
@@ -43,7 +45,7 @@ pub fn ayu_dark() -> Theme {
         "Ayu Dark".to_string(),
         Palette {
             background: Color::from_rgb(0.121, 0.141, 0.188),
-            text: Color::from_rgb(0.796, 0.800, 0.776), 
+            text: Color::from_rgb(0.796, 0.800, 0.776),
             primary: Color::from_rgb(0.451, 0.816, 1.000),
             success: Color::from_rgb(0.729, 0.902, 0.494),
             danger: Color::from_rgb(0.949, 0.529, 0.475),

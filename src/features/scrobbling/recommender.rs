@@ -22,7 +22,9 @@ pub fn rank_candidates(
         .filter(|(idx, track)| {
             *idx != current_idx
                 && track.linked
-                && !cache_entry(track, link_cache).map(|e| e.skipped).unwrap_or(false)
+                && !cache_entry(track, link_cache)
+                    .map(|e| e.skipped)
+                    .unwrap_or(false)
         })
         .map(|(idx, track)| {
             let lastfm_match = similar.iter().any(|s| {
