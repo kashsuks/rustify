@@ -689,14 +689,18 @@ impl App {
             bottom: 0.0,
             left: 0.0,
         });
+        
+        let volume_icon = if self.player.volume() <= 0.0 {
+            Icon::VolumeX // if volume is set to 0/muted
+        } else {
+            Icon::Volume2 // if volume != 0 (not muted)
+        };
 
-        let volume_percent = (self.player.volume() * 100.0).round() as u8;
         let volume = row![
-            text("Volume").size(12),
+            iced::widget::Text::from(volume_icon).size(18),
             slider(0.0..=1.0, self.player.volume(), Message::VolumeChanged)
-                .step(0.01)
+                .step(0.1) // change step if needed for more speed
                 .width(Length::Fill),
-            text(format!("{}%", volume_percent)).size(12),
         ]
         .spacing(10)
         .align_y(iced::Alignment::Center)
