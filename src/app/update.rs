@@ -125,10 +125,20 @@ impl App {
                 }
 
                 Task::none()
-            }
+            } 
             Message::StartAuth => {
                 let key = self.scrobbler.api_key.clone();
                 let secret = self.scrobbler.api_secret.clone();
+
+                if key.trim().is_empty() || secret.trim().is_empty() {
+                    self.lastfm_auth_status = Some(
+                        "Missing Last.fm API key or secret in .env".to_string(),
+                    );
+                    return Task::none();
+                }
+
+                self.lastfm_auth_status = Some("Requesting Last.fm authorization...".to_string());
+
                 Task::perform(
                     async move { Scrobbler::new(key, secret).get_token().await },
                     Message::AuthTokenReceived,
@@ -136,28 +146,51 @@ impl App {
             }
             Message::AuthTokenReceived(Some(token)) => {
                 let url = self.scrobbler.auth_url(&token);
-                let _ = open::that(url);
-                self.auth_token = Some(token);
-                self.auth_poll_attempts_left = 15;
-                Task::done(Message::AuthPollTick)
+
+                match open::that(&url) {
+                    Ok(_) => {
+                        self.lastfm_auth_status =
+                            Some("Approve Rustify in your browser to finish connecting.".to_string());
+                        self.auth_token = Some(token);
+                        self.auth_poll_attempts_left = 15;
+                        Task::done(Message::AuthPollTick)
+                    }
+                    Err(err) => {
+                        self.lastfm_auth_status =
+                            Some(format!("Could not open browser: {}", err));
+                        Task::none()
+                    }
+                }
             }
-            Message::AuthTokenReceived(None) => Task::none(),
+            Message::AuthTokenReceived(None) => {
+                self.lastfm_auth_status = Some(
+                    "Could not get Last.fm auth token. Check LASTFM_API_KEY and LASTFM_API_SECRET in .env."
+                    .to_string(),
+                );
+                Task::none()
+            }
             Message::AuthCompleted(Some(session_key)) => {
                 if let Err(err) = crate::features::settings::env::write_lastfm_session_key(&session_key) {
                     eprintln!("Failed to persist Last.fm session key: {}", err);
                 }
+
                 self.scrobbler.session_key = Some(session_key);
                 self.auth_token = None;
                 self.auth_poll_attempts_left = 0;
-                println!("Last.fm auth successful");
+                self.lastfm_auth_status = Some("Connected to Last.fm.".to_string());
+
                 Task::none()
             }
             Message::AuthCompleted(None) => {
                 if self.auth_poll_attempts_left > 0 && self.auth_token.is_some() {
+                    self.lastfm_auth_status =
+                        Some("Waiting for Last.fm approval...".to_string());
                     Task::done(Message::AuthPollTick)
                 } else {
-                    println!("Last.fm auth timed out or was not approved.");
                     self.auth_token = None;
+                    self.lastfm_auth_status = Some(
+                        "Last.fm authorization timed out or was not approved.".to_string(),
+                    );
                     Task::none()
                 }
             }

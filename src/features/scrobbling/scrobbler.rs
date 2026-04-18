@@ -40,7 +40,7 @@ impl Scrobbler {
         params.insert("api_key", &self.api_key);
 
         let sig = self.sign(&params);
-        let resp = self
+        let resp = match self
             .client
             .get(API_URL)
             .query(&[
@@ -51,8 +51,16 @@ impl Scrobbler {
             ])
             .send()
             .await
-            .ok()?;
-        let json: serde_json::Value = resp.json().await.ok()?;
+        {
+            Ok(resp) => resp,
+            Err(_) => return None,
+        };
+
+        let json: serde_json::Value = match resp.json().await {
+            Ok(json) => json,
+            Err(_) => return None,
+        };
+
         json["token"].as_str().map(|token| token.to_string())
     }
 

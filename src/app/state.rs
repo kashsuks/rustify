@@ -105,6 +105,7 @@ pub struct App {
     pub(crate) scrobbler: Scrobbler,
     pub(crate) auth_token: Option<String>,
     pub(crate) auth_poll_attempts_left: u8,
+    pub(crate) lastfm_auth_status: Option<String>,
     pub(crate) scrobble_timer: f32,
     pub(crate) current_duration_secs: u64,
     pub(crate) scrobbled: bool,
@@ -123,7 +124,8 @@ pub struct App {
 
 impl App {
     pub fn new() -> Self {
-        dotenvy::dotenv().ok();
+        let env_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(".env");
+        dotenvy::from_path(env_path).ok();
 
         let client_id = std::env::var("DISCORD_CLIENT_ID").unwrap_or_default();
         let lastfm_api_key = std::env::var("LASTFM_API_KEY").unwrap_or_default();
@@ -160,6 +162,7 @@ impl App {
             library_search: String::new(),
             auth_token: None,
             auth_poll_attempts_left: 0,
+            lastfm_auth_status: None,
             scrobble_timer: 0.0,
             current_duration_secs: 0,
             scrobbled: false,

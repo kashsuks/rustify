@@ -491,6 +491,11 @@ impl App {
 
         let lastfm_connected = self.scrobbler.is_authenticated();
 
+        let lastfm_auth_message: Element<Message> = match &self.lastfm_auth_status {
+            Some(message) => text(message).size(12).into(),
+            None => Space::with_height(0).into(),
+        };
+
         let lastfm_section = column![
             text("Connections").size(22),
             row![
@@ -521,7 +526,8 @@ impl App {
                 }),
             ]
             .spacing(12)
-            .align_y(iced::Alignment::Center)
+            .align_y(iced::Alignment::Center),
+            lastfm_auth_message,
         ]
         .spacing(12);
 

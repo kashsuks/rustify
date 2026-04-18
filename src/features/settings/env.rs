@@ -101,10 +101,7 @@ pub fn write_lastfm_settings(api_key: &str, api_secret: &str, username: &str) ->
 
 pub fn write_lastfm_session_key(session_key: &str) -> io::Result<()> {
     dotenvy::dotenv().ok();
-    let path = std::env::current_dir()
-        .ok()
-        .map(|p| p.join(".env"))
-        .unwrap_or_default();
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(".env");
 
     let existing = fs::read_to_string(&path).unwrap_or_default();
     let mut map = parse_env(&existing);
