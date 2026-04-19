@@ -1,3 +1,6 @@
+/// This file is responsible for finding song metadata
+/// And assigning default values of no real ones are found
+
 use crate::app::TrackMeta;
 use lofty::prelude::*;
 use lofty::probe::Probe;
@@ -10,6 +13,23 @@ pub async fn pick_folder() -> Option<PathBuf> {
         .map(|f| f.path().to_path_buf())
 }
 
+/// Scans the audio for metadata and filetype
+/// 
+/// # Arguments
+/// 
+/// - `dir` (`&Path`) - Parent directory path with all the files.
+/// 
+/// # Returns
+/// 
+/// - `Vec<TrackMeta>` - Track metadata after scanning the song.
+/// 
+/// # Examples
+/// 
+/// ```
+/// use crate::...;
+/// 
+/// let _ = scan_audio();
+/// ```
 pub fn scan_audio(dir: &Path) -> Vec<TrackMeta> {
     let extensions = ["mp3", "flac", "ogg", "wav", "m4a"];
 
@@ -31,6 +51,8 @@ pub fn scan_audio(dir: &Path) -> Vec<TrackMeta> {
                 .and_then(|s| s.to_str())
                 .unwrap_or("Unknown")
                 .to_string();
+
+            // fallback cases if no data is found
             let mut artist = "Unknown Artist".to_string();
             let mut album = "Unknown Album".to_string();
             let mut duration = "--:--".to_string();
@@ -55,7 +77,7 @@ pub fn scan_audio(dir: &Path) -> Vec<TrackMeta> {
                 }
 
                 duration_secs = tagged_file.properties().duration().as_secs();
-                duration = format!("{}:{:02}", duration_secs / 60, duration_secs % 60);
+                duration = format!("{}:{:02}", duration_secs / 60, duration_secs % 60); // minutes:seconds (rounded to 2 dp)
             }
 
             TrackMeta {

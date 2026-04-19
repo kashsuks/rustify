@@ -7,7 +7,6 @@ pub struct SearchResult {
     pub title: String,
     pub artist: String,
     pub duration_secs: u64,
-    pub mbid: String,
 }
 
 #[derive(Debug, Clone)]
@@ -36,7 +35,6 @@ struct TrackMatches {
 struct TrackMatch {
     name: String,
     artist: String,
-    mbid: Option<String>,
     duration: Option<String>,
 }
 
@@ -66,7 +64,6 @@ pub async fn search_tracks(api_key: &str, title: &str, artist: &str) -> Vec<Sear
                 .as_deref()
                 .and_then(|duration| duration.parse::<u64>().ok())
                 .unwrap_or(0),
-            mbid: track.mbid.unwrap_or_default(),
             title: track.name,
             artist: track.artist,
         })
@@ -98,7 +95,6 @@ pub async fn search_tracks_by_query(api_key: &str, query: &str) -> Vec<SearchRes
                 .as_deref()
                 .and_then(|duration| duration.parse::<u64>().ok())
                 .unwrap_or(0),
-            mbid: track.mbid.unwrap_or_default(),
             title: track.name,
             artist: track.artist,
         })

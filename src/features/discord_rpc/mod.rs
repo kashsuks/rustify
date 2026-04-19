@@ -1,3 +1,8 @@
+/// This file is responsible for all updates
+/// Of the Discord RPC (Rich Presence) that
+/// Shows up on a users profile when listening
+/// To a song via Rustify
+
 use crate::app::App;
 use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
 
@@ -5,6 +10,26 @@ pub struct DiscordRpc {
     client: Option<DiscordIpcClient>,
 }
 
+/// Uses the IMGDB to create images of the song cover and
+/// use in the discord RPC activiy overlay
+/// 
+/// # Arguments
+/// 
+/// - `bytes` (`Vec<u8>`) - Song cover data.
+/// 
+/// # Returns
+/// 
+/// - `Option<String>` - Final url of the fetched song from IMGDB.
+/// 
+/// # Examples
+/// 
+/// ```no_run
+/// use crate::...;
+/// 
+/// async {
+///   let result = upload_artwork().await;
+/// };
+/// ```
 pub async fn upload_artwork(bytes: Vec<u8>) -> Option<String> {
     let api_key = std::env::var("IMGBB_API_KEY").ok()?;
     use base64::Engine;
@@ -33,6 +58,15 @@ impl DiscordRpc {
         Self { client }
     }
 
+    /// Main loop for Discord RPC detection and updates
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use crate::...;
+    /// 
+    /// let _ = update();
+    /// ```
     pub fn update(&mut self, app: &App) {
         let Some(client) = self.client.as_mut() else {
             return;

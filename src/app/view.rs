@@ -2,7 +2,7 @@ use crate::app::{App, MatchState, Message};
 use crate::features::scrobbling::matcher::SearchResult;
 use iced::widget::image as iced_image;
 use iced::widget::{
-    button, column, container, horizontal_rule, pick_list, row, scrollable, slider, text,
+    button, column, container, horizontal_rule, mouse_area, pick_list, row, scrollable, slider, text,
     text_input, Space,
 };
 use iced::{Color, Element, Length, Padding};
@@ -533,6 +533,54 @@ impl App {
         ]
         .spacing(12);
 
+        let secret_reveal_icon = |is_visible: bool| {
+            container(iced::widget::Text::from(if is_visible {
+                Icon::EyeOff
+            } else {
+                Icon::Eye
+            }))
+            .width(44)
+            .height(44)
+            .center_x(Length::Fill)
+            .center_y(Length::Fill)
+            .style(|_| container::Style {
+                background: Some(iced::Background::Color(Color::from_rgba(
+                    1.0, 1.0, 1.0, 0.06,
+                ))),
+                border: iced::Border {
+                    radius: 10.0.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+        };
+
+        let api_key_input = row![
+            text_input("Last.fm API key", &self.settings_lastfm_api_key)
+                .on_input(Message::SettingsLastfmApiKeyChanged)
+                .secure(!self.hover_show_lastfm_api_key)
+                .padding(10)
+                .size(14),
+            mouse_area(secret_reveal_icon(self.hover_show_lastfm_api_key))
+                .on_enter(Message::SettingsApiKeyHoverChanged(true))
+                .on_exit(Message::SettingsApiKeyHoverChanged(false)),
+        ]
+        .spacing(8)
+        .align_y(iced::Alignment::Center);
+
+        let api_secret_input = row![
+            text_input("Last.fm API secret", &self.settings_lastfm_api_secret)
+                .on_input(Message::SettingsLastfmApiSecretChanged)
+                .secure(!self.hover_show_lastfm_api_secret)
+                .padding(10)
+                .size(14),
+            mouse_area(secret_reveal_icon(self.hover_show_lastfm_api_secret))
+                .on_enter(Message::SettingsApiSecretHoverChanged(true))
+                .on_exit(Message::SettingsApiSecretHoverChanged(false)),
+        ]
+        .spacing(8)
+        .align_y(iced::Alignment::Center);
+
         let lastfm_connected = self.scrobbler.is_authenticated();
 
         let lastfm_auth_message: Element<Message> = match &self.lastfm_auth_status {
@@ -578,6 +626,25 @@ impl App {
             ]
             .spacing(12)
             .align_y(iced::Alignment::Center),
+            text_input("Last.fm username", &self.settings_lastfm_username)
+                .on_input(Message::SettingsLastfmUsernameChanged)
+                .padding(10)
+                .size(14),
+            api_key_input,
+            api_secret_input,
+            button(row![
+                iced::widget::Text::from(Icon::Save).size(16),
+                text("Save Last.fm Settings").size(14),
+            ]
+            .spacing(8)
+            .align_y(iced::Alignment::Center))
+            .padding([10, 18])
+            .style(|theme, status| {
+                let mut style = button::primary(theme, status);
+                style.border.radius = 16.0.into();
+                style
+            })
+            .on_press(Message::SaveSettings),
             lastfm_auth_message,
         ]
         .spacing(12);
