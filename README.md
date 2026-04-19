@@ -31,19 +31,3 @@ Download `rustify-windows-x86_64.zip`, extract it, then run `rustify.exe`.
 Because the executable is not code-signed, Windows SmartScreen may show a
 warning the first time it runs. Choose **More info**, then **Run anyway** if you
 trust the build.
-
-### Arch Linux
-
-Download `rustify-arch-linux-x86_64.tar.gz`, then run:
-
-```sh
-tar -xzf rustify-arch-linux-x86_64.tar.gz
-chmod +x rustify
-./rustify
-```
-
-The Arch Linux build expects ALSA to be available:
-
-```sh
-sudo pacman -S --needed alsa-lib
-```
