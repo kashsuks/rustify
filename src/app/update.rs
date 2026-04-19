@@ -258,41 +258,18 @@ impl App {
                 self.settings_lastfm_username = value;
                 Task::none()
             }
-            Message::SettingsLastfmApiKeyChanged(value) => {
-                self.settings_lastfm_api_key = value;
-                Task::none()
-            }
-            Message::SettingsLastfmApiSecretChanged(value) => {
-                self.settings_lastfm_api_secret = value;
-                Task::none()
-            }
             Message::SaveSettings => {
                 if let Err(err) = crate::features::settings::env::write_lastfm_settings(
-                    &self.settings_lastfm_api_key,
-                    &self.settings_lastfm_api_secret,
+                    &self.lastfm_api_key,
+                    &self.scrobbler.api_secret,
                     &self.settings_lastfm_username,
                 ) {
                     eprintln!("Failed to save settings: {}", err);
                     return Task::none();
                 }
 
-                self.lastfm_api_key = self.settings_lastfm_api_key.clone();
-                self.scrobbler.api_key = self.settings_lastfm_api_key.clone();
-                self.scrobbler.api_secret = self.settings_lastfm_api_secret.clone();
                 self.lastfm_username = self.settings_lastfm_username.clone();
-                self.scrobbler = Scrobbler::new(
-                    self.lastfm_api_key.clone(),
-                    self.settings_lastfm_api_secret.clone(),
-                );
 
-                Task::none()
-            }
-            Message::SettingsApiKeyHoverChanged(value) => {
-                self.hover_show_lastfm_api_key = value;
-                Task::none()
-            }
-            Message::SettingsApiSecretHoverChanged(value) => {
-                self.hover_show_lastfm_api_secret = value;
                 Task::none()
             }
             Message::LibrarySearchChanged(value) => {

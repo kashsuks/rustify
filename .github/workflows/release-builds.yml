@@ -1,0 +1,88 @@
+name: Release Builds
+
+"on":
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    name: Build macOS universal
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust targets
+        run: |
+          rustup target add aarch64-apple-darwin
+          rustup target add x86_64-apple-darwin
+
+      - name: Build macOS binaries
+        run: |
+          cargo build --release --locked --target aarch64-apple-darwin
+          cargo build --release --locked --target x86_64-apple-darwin
+
+      - name: Package macOS universal binary
+        run: |
+          mkdir -p dist/macos-universal
+          lipo -create \
+            target/aarch64-apple-darwin/release/rustify \
+            target/x86_64-apple-darwin/release/rustify \
+            -output dist/macos-universal/rustify
+          chmod +x dist/macos-universal/rustify
+          zip -j dist/rustify-macos-universal.zip dist/macos-universal/rustify
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustify-macos-universal
+          path: dist/rustify-macos-universal.zip
+          if-no-files-found: error
+
+  build-windows:
+    name: Build Windows x86_64
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build Windows binary
+        run: cargo build --release --locked
+
+      - name: Package Windows binary
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/windows-x86_64 | Out-Null
+          Copy-Item target/release/rustify.exe dist/windows-x86_64/rustify.exe
+          Compress-Archive -Path dist/windows-x86_64/rustify.exe -DestinationPath dist/rustify-windows-x86_64.zip -Force
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustify-windows-x86_64
+          path: dist/rustify-windows-x86_64.zip
+          if-no-files-found: error
+
+  build-arch-linux:
+    name: Build Arch Linux x86_64
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build in Arch Linux
+        run: |
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -w /workspace \
+            archlinux:base-devel \
+            bash -lc 'pacman -Syu --noconfirm rust cargo pkgconf alsa-lib tar && cargo build --release --locked --target x86_64-unknown-linux-gnu && mkdir -p dist/arch-linux-x86_64 && cp target/x86_64-unknown-linux-gnu/release/rustify dist/arch-linux-x86_64/rustify && chmod +x dist/arch-linux-x86_64/rustify && tar -C dist/arch-linux-x86_64 -czf dist/rustify-arch-linux-x86_64.tar.gz rustify'
+
+      - name: Upload Arch Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rustify-arch-linux-x86_64
+          path: dist/rustify-arch-linux-x86_64.tar.gz
+          if-no-files-found: error
